@@ -1,7 +1,8 @@
 # Vortex PCS Rust implementation
 
-This implementation leverages Poseidon2 hash function for both hashing columns and Merkle tree. In also leverages
-KoalaBear prime field. The field, hash and dft implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3)
+This implementation leverages Poseidon2 hash function for both hashing columns and Merkle tree. It also leverages
+KoalaBear prime field. The field, hash and DFT implementations are taken
+from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
 ## Definition
 
@@ -21,8 +22,7 @@ $$
 
 Then, we organize these vectors into the matrix $W \in \mathbb{F}^{k\times n}$.
 
-<img src="./assets/vortex1.png" alt="drawing" width="50%"/>
-
+![](./assets/vortex1.png)
 
 We extend our matrix with additional columns by replacing each word $a_i$ with its codeword $a_i'$,
 resulting in a matrix $W' \in \mathbb{F}^{k\times m}$, where $m > n$.
@@ -30,7 +30,7 @@ resulting in a matrix $W' \in \mathbb{F}^{k\times m}$, where $m > n$.
 Then we hash each column, receiving $m$ values of $h_i$ — we will use these values as our commitment to the polynomials
 $f_i$.
 
-<img src="./assets/vortex1_5.png" alt="drawing" width="50%"/>
+![](./assets/vortex1_5.png)
 
 ### Open
 
@@ -46,12 +46,10 @@ $$
 * The prover responds with $u = B\cdot W$, where $B = (1, \beta, \beta^1,\dots,\beta^{k-1})$. Note that naturally, each
   element in $u$ equals to the sum of corresponding polynomials' coefficients over corresponding weight -- polynomial
   $i$ will be multiplied by $\beta^i$.
-
-  <img src="./assets/vortex2.png" alt="drawing" width="50%"/>
+  ![](./assets/vortex2.png)
 * Then, the verifier samples $t$ indexes $q_1,\dots,q_t$ where $q_i \in [m]$
 * The prover opens the corresponding columns $s_1,\dots,s_t$ from the matrix $W'$
-
-  <img src="./assets/vortex3.png" alt="drawing" width="50%"/>
+  ![](./assets/vortex3.png)
 * The verifier computes the Reed-Solomon encoding of $u$ named $u'$.
 * The verifier checks:
     * $hash(s_i) == h_{q_i}$ for each $i\in [t]$
