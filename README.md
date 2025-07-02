@@ -4,6 +4,8 @@ This implementation leverages Poseidon2 hash function for both hashing columns a
 KoalaBear prime field. The field, hash and DFT implementations are taken
 from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
+Now only commitment is available. Work in progress for opening.
+
 ## Benchmarks
 Run command:
 ```shell
