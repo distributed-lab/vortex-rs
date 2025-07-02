@@ -22,7 +22,7 @@ impl MerkleTree {
                     .into_par_iter()
                     .chunks(current_num_threads())
                     .map(|indexes| {
-                        let mut res = vec![];
+                        let mut res = Vec::with_capacity(indexes.len());
                         for j in indexes {
                             res.push(hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]));
                         }

@@ -4,6 +4,24 @@ This implementation leverages Poseidon2 hash function for both hashing columns a
 KoalaBear prime field. The field, hash and DFT implementations are taken
 from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
+## Benchmarks
+Run command:
+```shell
+cargo test test_rs_encode_matrix --features nightly-features --release
+```
+The following benches taken on the M3 Pro 36GB MakBook comparing to the Golang implementation (if changed
+to Poseidon2)
+from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
+
+### Commit to $2^{11}$ polynomials of $2^{19}$ degree
+
+Takes 42-44 seconds for Rust implementation and 70-75 seconds for Golang implementation. 
+If parallelize DFT instead of separate ReedSolomon instances Rust implementation consumes 31-33 seconds.   
+
+### Commit to $2^{19}$ polynomials of $2^{11}$ degree
+
+Takes 39-43 seconds for Rust implementation and 70-75 seconds for Golang implementation.
+
 ## Definition
 
 Imagine we have a list of polynomials $f_0,\dots,f_{k-1}$. We want to commit them and evaluate at the same point at the

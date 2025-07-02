@@ -1,7 +1,7 @@
 use crate::hash::{PoseidonHash, hash_poseidon2};
 use crate::merkle_tree::MerkleTree;
 use crate::rs::encode_reed_solomon;
-use p3_dft::Radix2DitParallel;
+use p3_dft::{Radix2Dit, Radix2DitParallel};
 use p3_field::PrimeCharacteristicRing;
 use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
 use p3_maybe_rayon::prelude::*;
@@ -23,16 +23,22 @@ pub fn commit(
     let dft = Radix2DitParallel::<KoalaBear>::default();
 
     let w_: Vec<Vec<KoalaBear>> = w
-        .into_iter()
-        .enumerate()
-        .map(|(i, wi)| encode_reed_solomon(wi, 2, &dft))
+        .into_par_iter().chunks(current_num_threads())
+        .map(|chunk| {
+            let mut res = Vec::with_capacity(chunk.len());
+            for wi in chunk {
+                res.push(encode_reed_solomon(wi, 2, &Radix2Dit::default()))
+            }
+            res
+        })
+        .flatten()
         .collect();
 
     let hash: Vec<[KoalaBear; 8]> = (0..nb_col)
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {
-            let mut res = vec![];
+            let mut res = Vec::with_capacity(indexes.len());
 
             for i in indexes {
                 let mut left = [KoalaBear::ZERO; 8];
@@ -120,8 +126,8 @@ mod tests {
 
     #[test]
     fn test_rs_encode_matrix() {
-        let nb_col = 1 << 19;
-        let nb_row = 1 << 11;
+        let nb_col = 1 << 11;
+        let nb_row = 1 << 19;
 
         let mut rng = SmallRng::seed_from_u64(1);
         let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
