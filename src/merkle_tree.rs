@@ -1,5 +1,5 @@
 use crate::PoseidonHash;
-use crate::hash::{hash_poseidon2, Digest};
+use crate::hash::{Digest, hash_poseidon2};
 use p3_koala_bear::KoalaBear;
 use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
@@ -17,14 +17,14 @@ impl MerkleTree {
         for i in 0..depth {
             let prev = &layers[i];
 
-            if prev.len() / 2 >= 512 {
+            if prev.len() / 2 >= 64 {
                 let next: Vec<Digest> = (0..prev.len() / 2)
                     .into_par_iter()
                     .chunks(current_num_threads())
                     .map(|indexes| {
-                        let mut res = Vec::with_capacity(indexes.len());
-                        for j in indexes {
-                            res.push(hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]));
+                        let mut res = vec![Digest::default(); indexes.len()];
+                        for (idx, j) in indexes.into_iter().enumerate() {
+                            res[idx] = hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]);
                         }
                         res
                     })
@@ -33,9 +33,9 @@ impl MerkleTree {
 
                 layers.push(next);
             } else {
-                let mut next = Vec::with_capacity(prev.len() / 2);
+                let mut next =  vec![Digest::default(); prev.len() / 2];
                 for j in 0..(prev.len() / 2) {
-                    next.push(hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]));
+                    next[j] = hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]);
                 }
 
                 layers.push(next);
@@ -66,7 +66,7 @@ impl MerkleTree {
     }
 }
 
-pub fn verify(
+pub fn verify_merkle_proof(
     mut index: usize,
     leaf: Digest,
     root: Digest,
@@ -91,7 +91,7 @@ pub fn verify(
 #[cfg(test)]
 mod tests {
     use crate::hash::{Digest, PoseidonHash};
-    use crate::merkle_tree::{MerkleTree, verify};
+    use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
     use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
     use rand::rngs::SmallRng;
     use rand::{Rng, SeedableRng};
@@ -119,7 +119,7 @@ mod tests {
         // Check proof verification for every leaf
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = tree.open(i);
-            let valid = verify(i, *leaf, root, proof, &perm);
+            let valid = verify_merkle_proof(i, *leaf, root, proof, &perm);
             assert!(valid, "Merkle proof failed for index {}", i);
         }
     }

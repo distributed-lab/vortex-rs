@@ -1,30 +1,67 @@
 # Vortex PCS Rust implementation
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/distributed-lab/vortex-rs/issues)
+<a href="https://github.com/distributed-lab/vortex-rs">
+<img src="https://img.shields.io/github/stars/distributed-lab/vortex-rs?style=social"/>
+</a>
+
+⚠️ __Please note - this crypto library has not been audited, so use it at your own risk.__
+
+## Abstract
+
 This implementation leverages Poseidon2 hash function for both hashing columns and Merkle tree. It also leverages
 KoalaBear prime field. The field, hash and DFT implementations are taken
 from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
-The original paper can be found [here](https://eprint.iacr.org/2024/185). 
+The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
-Now only commitment is available. Work in progress for opening.
+## Usage
+
+Use the following functions to commit/evaluate/open and verify:
+
+1. Commit
+   ```rust
+      pub fn commit(perm: &PoseidonHash, nb_row: usize, nb_col: usize, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>)
+    ```
+2. Eval
+   ```rust
+      pub fn eval(w: &Vec<Vec<KoalaBear>>, nb_row: usize, nb_col: usize, coin: KoalaBearExt) -> Vec<KoalaBearExt>
+    ```
+3. Open
+   ```rust
+      pub fn open(w: &Vec<Vec<KoalaBear>>, w_: &Vec<Vec<KoalaBear>>, nb_row: usize, nb_col: usize, mt: &MerkleTree, beta: KoalaBearExt, column_ids: Vec<usize>) -> OpenProof
+    ```
+4. Verify proof
+   ```rust
+      pub fn verify(perm: &PoseidonHash, proof: OpenProof, nb_row: usize, nb_col: usize, root: Digest, y: Vec<KoalaBearExt>, coin: KoalaBearExt)
+    ```
+
+The verification function asserts if proof is invalid. The implementation are fixed over KoalaBear field and it's
+4-degree extension. Check tests in [lib.rs](./src/lib.rs) for more details.
 
 ## Benchmarks
+
 Run command:
+
 ```shell
-cargo test test_rs_encode_matrix --features nightly-features --release
+cargo test test_rs_encode_matrix --features nightly-features --release -- --show-output
+cargo test test_rs_open_matrix --features nightly-features --release -- --show-output
+cargo test test_rs_verify_matrix --features nightly-features --release -- --show-output
 ```
+
 The following benches taken on the M3 Pro 36GB MakBook comparing to the Golang implementation (if changed
 to Poseidon2)
 from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
 
-### Commit to $2^{11}$ polynomials of $2^{19}$ degree
+All test are performed for $2^{19}$ polynomials of $2^{11}$ degree according
+to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 
-Takes 42-44 seconds for Rust implementation and 70-75 seconds for Golang implementation. 
-If parallelize DFT instead of separate ReedSolomon instances Rust implementation consumes 31-33 seconds.   
-
-### Commit to $2^{19}$ polynomials of $2^{11}$ degree
-
-Takes 39-43 seconds for Rust implementation and 70-75 seconds for Golang implementation.
+|            | Gnark (sec) | Rust (sec) |
+|------------|-------------|------------|
+| Commit     | 70-75       | 31-35      |
+| Open Proof | 2           | 1.2-1.5    |
+| Verify     | 28          | 1.6-1.7    |
 
 ## Definition
 
