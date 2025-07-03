@@ -1,4 +1,4 @@
-use crate::hash::{PoseidonHash, hash_poseidon2};
+use crate::hash::{PoseidonHash, hash_poseidon2, Digest};
 use crate::merkle_tree::MerkleTree;
 use crate::rs::encode_reed_solomon;
 use p3_dft::{Radix2Dit, Radix2DitParallel};
@@ -34,7 +34,7 @@ pub fn commit(
         .flatten()
         .collect();
 
-    let hash: Vec<[KoalaBear; 8]> = (0..nb_col)
+    let hash: Vec<Digest> = (0..nb_col)
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {

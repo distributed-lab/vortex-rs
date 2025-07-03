@@ -2,6 +2,8 @@ use p3_koala_bear::{KoalaBear, Poseidon2ExternalLayerKoalaBear, Poseidon2Interna
 use p3_poseidon2::Poseidon2;
 use p3_symmetric::Permutation;
 
+pub type Digest = [KoalaBear; 8];
+
 pub type PoseidonHash = Poseidon2<
     KoalaBear,
     Poseidon2ExternalLayerKoalaBear<16>,
@@ -12,9 +14,9 @@ pub type PoseidonHash = Poseidon2<
 
 pub fn hash_poseidon2(
     perm: &PoseidonHash,
-    left: [KoalaBear; 8],
-    right: [KoalaBear; 8],
-) -> [KoalaBear; 8] {
+    left: Digest,
+    right: Digest,
+) -> Digest {
     let mut input = [
         left[0], left[1], left[2], left[3], left[4], left[5], left[6], left[7], right[0], right[1],
         right[2], right[3], right[4], right[5], right[6], right[7],
