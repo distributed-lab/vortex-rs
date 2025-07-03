@@ -20,8 +20,6 @@ pub fn commit(
     nb_col: usize,
     w: Vec<Vec<KoalaBear>>,
 ) -> MerkleTree {
-    let dft = Radix2DitParallel::<KoalaBear>::default();
-
     let w_: Vec<Vec<KoalaBear>> = w
         .into_par_iter().chunks(current_num_threads())
         .map(|chunk| {
