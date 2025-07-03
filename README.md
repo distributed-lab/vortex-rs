@@ -54,7 +54,7 @@ The following benches taken on the M3 Pro 36GB MakBook comparing to the Golang i
 to Poseidon2)
 from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
 
-All test are performed for $2^{19}$ polynomials of $2^{11}$ degree according
+All tests are performed for $2^{19}$ polynomials of $2^{11}$ degree according
 to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 
 |            | Gnark (sec) | Rust (sec) |
