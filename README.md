@@ -37,7 +37,7 @@ Use the following functions to commit/evaluate/open and verify:
       pub fn verify(perm: &PoseidonHash, proof: OpenProof, nb_row: usize, nb_col: usize, root: Digest, y: Vec<KoalaBearExt>, coin: KoalaBearExt)
     ```
 
-The verification function asserts if proof is invalid. The implementation is fixed over KoalaBear field and it's
+The verification function asserts if proof is invalid. The implementation is fixed over KoalaBear field and its
 4-degree extension. Check tests in [lib.rs](./src/lib.rs) for more details.
 
 ## Benchmarks
