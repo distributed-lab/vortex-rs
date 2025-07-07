@@ -1,6 +1,5 @@
 use crate::PoseidonHash;
 use crate::hash::{Digest, hash_poseidon2};
-use p3_koala_bear::KoalaBear;
 use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
 
@@ -52,7 +51,7 @@ impl MerkleTree {
     pub fn open(&self, mut index: usize) -> Vec<Digest> {
         let mut proof = Vec::with_capacity(self.digest_layers.len());
 
-        for level in (0..self.digest_layers.len() - 1) {
+        for level in 0..self.digest_layers.len() - 1 {
             let sibling = index ^ 1;
             proof.push(self.digest_layers[level][sibling]);
             index >>= 1;

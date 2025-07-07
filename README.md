@@ -18,23 +18,44 @@ The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
 ## Usage
 
+The following parameters have to be set up:
+```rust
+pub struct VortexParams {
+    perm: PoseidonHash,
+    nb_row: usize,
+    nb_col: usize,
+    rs_rate: usize,
+    num_columns_to_open: usize,
+}
+```
+For example:
+```rust
+let params = VortexParams {
+    perm, // An instance of PoseidonHash
+    nb_row: 1 << 19, // Number of rows in commitment matrix
+    nb_col: 1 << 11, // Number of columns or a polynomial degree
+    rs_rate: 2, // Reed-Solomon code rate
+    num_columns_to_open: 256, // Number of columns to open in the opening phase
+};
+```
+
 Use the following functions to commit/evaluate/open and verify:
 
 1. Commit
    ```rust
-      pub fn commit(perm: &PoseidonHash, nb_row: usize, nb_col: usize, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>)
+      pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>)
     ```
 2. Eval
    ```rust
-      pub fn eval(w: &Vec<Vec<KoalaBear>>, nb_row: usize, nb_col: usize, coin: KoalaBearExt) -> Vec<KoalaBearExt>
+      pub fn eval(params: &VortexParams, w: &Vec<Vec<KoalaBear>>, coin: KoalaBearExt, ) -> Vec<KoalaBearExt>
     ```
 3. Open
    ```rust
-      pub fn open(w: &Vec<Vec<KoalaBear>>, w_: &Vec<Vec<KoalaBear>>, nb_row: usize, nb_col: usize, mt: &MerkleTree, beta: KoalaBearExt, column_ids: Vec<usize>) -> OpenProof
+      pub fn open(params: &VortexParams, w: &Vec<Vec<KoalaBear>>, w_: &Vec<Vec<KoalaBear>>, mt: &MerkleTree, beta: KoalaBearExt, column_ids: Vec<usize>) -> OpenProof
     ```
 4. Verify proof
    ```rust
-      pub fn verify(perm: &PoseidonHash, proof: OpenProof, nb_row: usize, nb_col: usize, root: Digest, y: Vec<KoalaBearExt>, coin: KoalaBearExt)
+      pub fn verify(params: &VortexParams, proof: OpenProof, root: Digest, y: Vec<KoalaBearExt>, coin: KoalaBearExt)
     ```
 
 The verification function asserts if proof is invalid. The implementation is fixed over KoalaBear field and its
@@ -45,12 +66,10 @@ The verification function asserts if proof is invalid. The implementation is fix
 Run command:
 
 ```shell
-cargo test test_rs_encode_matrix --features nightly-features --release -- --show-output
-cargo test test_rs_open_matrix --features nightly-features --release -- --show-output
-cargo test test_rs_verify_matrix --features nightly-features --release -- --show-output
+cargo test test_vortex_full --features nightly-features --release -- --show-output
 ```
 
-The following benches taken on the M3 Pro 36GB MakBook comparing to the Golang implementation (if changed
+The following benches are taken on the M3 Pro 36GB MakBook comparing to the Golang implementation (if changed
 to Poseidon2)
 from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
 
@@ -60,7 +79,7 @@ to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 |            | Gnark (sec) | Rust (sec) |
 |------------|-------------|------------|
 | Commit     | 70-75       | 31-35      |
-| Open Proof | 2           | 1.2-1.5    |
+| Open Proof | 2           | 1.1-1.5    |
 | Verify     | 28          | 1.6-1.7    |
 
 ## Definition

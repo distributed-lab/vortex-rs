@@ -42,7 +42,7 @@ mod tests {
 
         let mut left = [KoalaBear::new(0); 8];
         for i in 0..8 {
-            left[i] = (KoalaBear::new(rng.random()));
+            left[i] = KoalaBear::new(rng.random());
         }
 
         let mut right = [KoalaBear::new(0); 8];
@@ -53,7 +53,7 @@ mod tests {
         let result = hash_poseidon2(&perm, left, right);
 
         for i in 0..8 {
-            print!("{} ", left[i]);
+            print!("{} ", result[i]);
         }
     }
 }

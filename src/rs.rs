@@ -1,4 +1,4 @@
-use p3_dft::{Radix2DFTSmallBatch, Radix2Dit, Radix2DitParallel, TwoAdicSubgroupDft};
+use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::PrimeCharacteristicRing;
 use p3_koala_bear::KoalaBear;
 use crate::KoalaBearExt;
