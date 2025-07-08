@@ -12,7 +12,7 @@ p3-symmetric = "0.3.0"
 p3-poseidon2 = "0.3.0"
 rand = "0.9.1"
 rayon = "1.10.0"
-
+blake3 = "1.8.2"
 
 [features]
 nightly-features = [

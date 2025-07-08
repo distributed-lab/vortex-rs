@@ -1,6 +1,7 @@
 use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
 use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
+use crate::sis::RSis;
 use p3_dft::Radix2DFTSmallBatch;
 use p3_field::PrimeCharacteristicRing;
 use p3_field::extension::BinomialExtensionField;
@@ -11,6 +12,7 @@ use rayon::current_num_threads;
 pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
+pub mod sis;
 
 pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
@@ -44,25 +46,19 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .flatten()
         .collect();
 
-    let hash: Vec<Digest> = (0..params.nb_col * params.rs_rate)
+    let hash: Vec<Vec<KoalaBear>> = (0..params.nb_col * params.rs_rate)
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {
-            let mut res = vec![Digest::default(); indexes.len()];
+            let hash = RSis::new(0, params.nb_row);
+            let mut res = vec![vec![]; indexes.len()];
 
             for (idx, i) in indexes.into_iter().enumerate() {
-                let mut buf = Digest::default();
-                for j in (0..params.nb_row).step_by(8) {
-                    buf[0] = w_[j][i];
-                    buf[1] = w_[j + 1][i];
-                    buf[2] = w_[j + 2][i];
-                    buf[3] = w_[j + 3][i];
-                    buf[4] = w_[j + 4][i];
-                    buf[5] = w_[j + 5][i];
-                    buf[6] = w_[j + 6][i];
-                    buf[7] = w_[j + 7][i];
-                    res[idx] = hash_poseidon2(&params.perm, res[idx], buf);
+                let mut buf = Vec::with_capacity(params.nb_row);
+                for j in 0..params.nb_row {
+                    buf.push(w_[j][i]);
                 }
+                res[idx] = hash.hash(&buf);
             }
 
             res
@@ -214,22 +210,10 @@ pub fn verify(
         .enumerate()
         .chunks(current_num_threads())
         .for_each(|chunks| {
+            let hash = RSis::new(0, params.nb_row);
+
             for (idx, column) in chunks {
-                let mut column_hash = Digest::default();
-                let mut buf = Digest::default();
-
-                for i in (0..column.len()).step_by(8) {
-                    buf[0] = column[i];
-                    buf[1] = column[i + 1];
-                    buf[2] = column[i + 2];
-                    buf[3] = column[i + 3];
-                    buf[4] = column[i + 4];
-                    buf[5] = column[i + 5];
-                    buf[6] = column[i + 6];
-                    buf[7] = column[i + 7];
-                    column_hash = hash_poseidon2(&params.perm, column_hash, buf);
-                }
-
+                let column_hash = hash.hash(&column);
                 assert!(
                     verify_merkle_proof(
                         proof.column_ids[idx],
