@@ -2,7 +2,7 @@ use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
 use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
 use crate::sis::RSis;
-use p3_dft::Radix2DFTSmallBatch;
+use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel};
 use p3_field::PrimeCharacteristicRing;
 use p3_field::extension::BinomialExtensionField;
 use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
@@ -18,6 +18,7 @@ pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
 pub struct VortexParams {
     perm: PoseidonHash,
+    r_sis: RSis,
     nb_row: usize,
     nb_col: usize,
     rs_rate: usize,
@@ -50,15 +51,15 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {
-            let hash = RSis::new(0, params.nb_row);
             let mut res = vec![vec![]; indexes.len()];
+            let dft = Radix2DFTSmallBatch::default();
 
             for (idx, i) in indexes.into_iter().enumerate() {
                 let mut buf = Vec::with_capacity(params.nb_row);
                 for j in 0..params.nb_row {
                     buf.push(w_[j][i]);
                 }
-                res[idx] = hash.hash(&buf);
+                res[idx] = params.r_sis.hash(&buf, &dft);
             }
 
             res
@@ -192,16 +193,19 @@ pub fn verify(
 
     let ux: KoalaBearExt = (0..params.nb_col)
         .into_par_iter()
-        .map(|i| proof.lin_comb[i] * x[i])
+        .chunks(current_num_threads())
+        .map(|chunk| chunk.into_iter().map(|i| proof.lin_comb[i] * x[i]).sum())
         .sum();
 
     let beta_y: KoalaBearExt = (0..params.nb_row)
         .into_par_iter()
-        .map(|i| y[i] * betas[i])
+        .chunks(current_num_threads())
+        .map(|chunk| chunk.into_iter().map(|i| y[i] * betas[i]).sum())
         .sum();
+
     assert_eq!(beta_y, ux, "failed to verify evaluation");
 
-    let dft = Radix2DFTSmallBatch::default();
+    let dft = Radix2DitParallel::default();
     let u_ = encode_reed_solomon_ext(proof.lin_comb, params.rs_rate, &dft);
 
     proof
@@ -210,10 +214,10 @@ pub fn verify(
         .enumerate()
         .chunks(current_num_threads())
         .for_each(|chunks| {
-            let hash = RSis::new(0, params.nb_row);
+            let dft = Radix2DFTSmallBatch::default();
 
             for (idx, column) in chunks {
-                let column_hash = hash.hash(&column);
+                let column_hash = params.r_sis.hash(&column, &dft);
                 assert!(
                     verify_merkle_proof(
                         proof.column_ids[idx],
@@ -309,9 +313,11 @@ mod tests {
                 .as_secs(),
         );
         let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
+        let r_sis= RSis::new(0, 1<<19);
 
         let params = VortexParams {
             perm,
+            r_sis,
             nb_row: 1 << 19,
             nb_col: 1 << 11,
             rs_rate: 2,

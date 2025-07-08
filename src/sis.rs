@@ -92,13 +92,12 @@ impl RSis {
         r
     }
 
-    pub fn hash(&self, v: &Vec<KoalaBear>) -> Vec<KoalaBear> {
+    pub fn hash(&self, v: &Vec<KoalaBear>, dft: &Radix2DFTSmallBatch<KoalaBear>) -> Vec<KoalaBear> {
         assert!(
             v.len() <= self.max_nb_elements_to_hash,
             "can't hash more than configured elements with params provided in constructor"
         );
         let mut res = vec![KoalaBear::ZERO; DEGREE];
-        let dft = Radix2DFTSmallBatch::default();
 
         for i in 0..self.ag.len() {
             res = self.inner_hash(res, &mut v.iter(), i, &dft);
