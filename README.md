@@ -10,9 +10,9 @@
 
 ## Abstract
 
-This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation rewritten
-from [Gnark's implementation](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/sis/sis.go) for
-hashing columns. It also leverages KoalaBear prime field and its 4-degree extension. The field, Poseidon3 and DFT
+This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation (it has been rewritten
+from [Gnark's implementation](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/sis/sis.go)) for
+hashing columns. It also leverages KoalaBear prime field and its 4-degree extension. The field, Poseidon2 and DFT
 implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
 The original paper can be found [here](https://eprint.iacr.org/2024/185).
