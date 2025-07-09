@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-p3-dft = { version = "0.3.0", features = ["parallel"] }
+p3-dft = { version = "0.3.0",features = ["parallel"] }
 p3-field = "0.3.0"
 p3-koala-bear = "0.3.0"
-p3-maybe-rayon = { version = "0.3.0", features = ["parallel"] }
+p3-maybe-rayon = { version = "0.3.0",features = ["parallel"] }
 p3-symmetric = "0.3.0"
 p3-poseidon2 = "0.3.0"
 rand = "0.9.1"
@@ -15,12 +15,8 @@ rayon = "1.10.0"
 blake3 = "1.8.2"
 
 [features]
-nightly-dft = [
+nightly-features = [
     "p3-dft/nightly-features",
-]
-nightly-koala = [
     "p3-koala-bear/nightly-features",
-]
-nightly-poseidin = [
     "p3-poseidon2/nightly-features"
 ]
