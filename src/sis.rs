@@ -1,4 +1,4 @@
-use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
+use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel, TwoAdicSubgroupDft};
 use p3_field::integers::QuotientMap;
 use p3_field::{PrimeCharacteristicRing, PrimeField32};
 use p3_koala_bear::KoalaBear;
@@ -92,7 +92,7 @@ impl RSis {
         r
     }
 
-    pub fn hash(&self, v: &Vec<KoalaBear>, dft: &Radix2DFTSmallBatch<KoalaBear>) -> Vec<KoalaBear> {
+    pub fn hash(&self, v: &Vec<KoalaBear>, dft: &Radix2DitParallel<KoalaBear>) -> Vec<KoalaBear> {
         assert!(
             v.len() <= self.max_nb_elements_to_hash,
             "can't hash more than configured elements with params provided in constructor"
@@ -111,7 +111,7 @@ impl RSis {
         mut state: Vec<KoalaBear>,
         vit: &mut Iter<KoalaBear>,
         pol_id: usize,
-        dft: &Radix2DFTSmallBatch<KoalaBear>,
+        dft: &Radix2DitParallel<KoalaBear>,
     ) -> Vec<KoalaBear> {
         assert_eq!(state.len(), DEGREE, "invalid state size");
 

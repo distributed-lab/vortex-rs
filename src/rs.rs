@@ -6,7 +6,7 @@ use p3_koala_bear::KoalaBear;
 pub fn encode_reed_solomon(
     input: Vec<KoalaBear>,
     rho: usize,
-    dft: &Radix2DFTSmallBatch<KoalaBear>,
+    dft: &Radix2DitParallel<KoalaBear>,
 ) -> Vec<KoalaBear> {
     let word_sz = input.len();
     let codeword_sz = word_sz * rho;
