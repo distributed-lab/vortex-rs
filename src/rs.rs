@@ -19,7 +19,7 @@ pub fn encode_reed_solomon(
 pub fn encode_reed_solomon_ext(
     input: Vec<KoalaBearExt>,
     rho: usize,
-    dft: &Radix2DitParallel<KoalaBearExt>,
+    dft: &Radix2DFTSmallBatch<KoalaBearExt>,
 ) -> Vec<KoalaBearExt> {
     let word_sz = input.len();
     let codeword_sz = word_sz * rho;
