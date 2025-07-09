@@ -205,7 +205,7 @@ pub fn verify(
 
     assert_eq!(beta_y, ux, "failed to verify evaluation");
 
-    let dft = Radix2DFTSmallBatch::default();
+    let dft = Radix2DitParallel::default();
     let u_ = encode_reed_solomon_ext(proof.lin_comb, params.rs_rate, &dft);
 
     proof
