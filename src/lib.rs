@@ -376,6 +376,23 @@ mod tests {
     ))]
     #[test]
     fn test_check_arch() {
-        println!("AVX enabled");
+        println!("AVX512F enabled");
     }
+
+    #[cfg(all(
+        target_arch = "x86_64",
+        target_feature = "avx2",
+        not(all(feature = "nightly-features", target_feature = "avx512f"))
+    ))]
+    #[test]
+    fn test_check_arch() {
+        println!("AVX2 enabled");
+    }
+
+    #[cfg(target_feature = "avx512vbmi2")]
+    #[test]
+    fn test_check_arch_2() {
+        println!("AVX512VBMI2 enabled");
+    }
+
 }
