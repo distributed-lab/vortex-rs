@@ -51,15 +51,15 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {
-            let mut res = vec![vec![]; indexes.len()];
+            let mut res = Vec::with_capacity(indexes.len());
             let dft = Radix2DFTSmallBatch::default();
 
-            for (idx, i) in indexes.into_iter().enumerate() {
+            for i in indexes {
                 let mut buf = Vec::with_capacity(params.nb_row);
                 for j in 0..params.nb_row {
                     buf.push(w_[j][i]);
                 }
-                res[idx] = params.r_sis.hash(&buf, &dft);
+                res.push(params.r_sis.hash(&buf, &dft));
             }
 
             res
@@ -313,7 +313,7 @@ mod tests {
                 .as_secs(),
         );
         let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
-        let r_sis= RSis::new(0, 1<<19);
+        let r_sis = RSis::new(0, 1 << 19);
 
         let params = VortexParams {
             perm,

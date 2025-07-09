@@ -35,9 +35,9 @@ impl MerkleTree {
             .into_par_iter()
             .chunks(current_num_threads())
             .map(|chunks| {
-                let mut res = vec![Digest::default(); chunks.len()];
-                for (idx, leaf) in chunks.into_iter().enumerate() {
-                    res[idx] = hash_leaf(perm, leaf);
+                let mut res = Vec::with_capacity(chunks.len());
+                for leaf in chunks {
+                    res.push(hash_leaf(perm, leaf));
                 }
                 res
             })
@@ -57,9 +57,9 @@ impl MerkleTree {
                     .into_par_iter()
                     .chunks(current_num_threads())
                     .map(|indexes| {
-                        let mut res = vec![Digest::default(); indexes.len()];
-                        for (idx, j) in indexes.into_iter().enumerate() {
-                            res[idx] = hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]);
+                        let mut res = Vec::with_capacity(indexes.len());
+                        for j in indexes {
+                            res.push(hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]));
                         }
                         res
                     })
@@ -68,9 +68,9 @@ impl MerkleTree {
 
                 layers.push(next);
             } else {
-                let mut next = vec![Digest::default(); prev.len() / 2];
+                let mut next = Vec::with_capacity(prev.len() / 2);
                 for j in 0..(prev.len() / 2) {
-                    next[j] = hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]);
+                    next.push(hash_poseidon2(perm, prev[2 * j], prev[2 * j + 1]));
                 }
 
                 layers.push(next);
