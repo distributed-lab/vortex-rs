@@ -1,12 +1,12 @@
 use crate::KoalaBearExt;
-use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel, TwoAdicSubgroupDft};
+use p3_dft::{Radix2Dit, Radix2DitParallel, TwoAdicSubgroupDft};
 use p3_field::PrimeCharacteristicRing;
 use p3_koala_bear::KoalaBear;
 
 pub fn encode_reed_solomon(
     input: Vec<KoalaBear>,
     rho: usize,
-    dft: &Radix2DFTSmallBatch<KoalaBear>,
+    dft: &Radix2Dit<KoalaBear>,
 ) -> Vec<KoalaBear> {
     let word_sz = input.len();
     let codeword_sz = word_sz * rho;

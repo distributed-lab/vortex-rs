@@ -125,7 +125,7 @@ pub fn verify_merkle_proof(
 
 #[cfg(test)]
 mod tests {
-    use crate::hash::{Digest, PoseidonHash};
+    use crate::hash::{PoseidonHash};
     use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
     use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
     use rand::rngs::SmallRng;

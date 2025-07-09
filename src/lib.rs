@@ -1,8 +1,8 @@
-use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
+use crate::hash::{Digest, PoseidonHash};
 use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
 use crate::sis::RSis;
-use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel};
+use p3_dft::{Radix2Dit, Radix2DitParallel};
 use p3_field::PrimeCharacteristicRing;
 use p3_field::extension::BinomialExtensionField;
 use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
@@ -38,7 +38,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .chunks(current_num_threads())
         .map(|chunk| {
             let mut res = Vec::with_capacity(chunk.len());
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2Dit::default();
             for wi in chunk {
                 res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
             }
@@ -52,7 +52,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .chunks(current_num_threads())
         .map(|indexes| {
             let mut res = vec![vec![]; indexes.len()];
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2Dit::default();
 
             for (idx, i) in indexes.into_iter().enumerate() {
                 let mut buf = Vec::with_capacity(params.nb_row);
@@ -214,7 +214,7 @@ pub fn verify(
         .enumerate()
         .chunks(current_num_threads())
         .for_each(|chunks| {
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2Dit::default();
 
             for (idx, column) in chunks {
                 let column_hash = params.r_sis.hash(&column, &dft);
