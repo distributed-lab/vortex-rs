@@ -19,7 +19,7 @@ const LOG_TWO_DEGREE: usize = 9;
 const LOG_TWO_BOUND: usize = 16;
 const LIMB_SIZE: usize = LOG_TWO_BOUND / 8;
 
-const DEGREE: usize = 1 << LOG_TWO_DEGREE;
+pub const DEGREE: usize = 1 << LOG_TWO_DEGREE;
 
 impl RSis {
     pub fn new(
@@ -78,7 +78,7 @@ impl RSis {
             .chunks(current_num_threads())
             .map(|indexes| {
                 let mut res = Vec::with_capacity(indexes.len());
-                let dft = Radix2DFTSmallBatch::default();
+                let dft = Radix2DFTSmallBatch::new(DEGREE);
 
                 for i in indexes {
                     let ag = dft.dft(r.a[i].clone());

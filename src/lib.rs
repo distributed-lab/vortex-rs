@@ -38,7 +38,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .chunks(current_num_threads())
         .map(|chunk| {
             let mut res = Vec::with_capacity(chunk.len());
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
             for wi in chunk {
                 res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
             }
@@ -52,7 +52,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .chunks(current_num_threads())
         .map(|indexes| {
             let mut res = Vec::with_capacity(indexes.len());
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2DFTSmallBatch::new(sis::DEGREE);
 
             for i in indexes {
                 let mut buf = Vec::with_capacity(params.nb_row);
@@ -214,7 +214,7 @@ pub fn verify(
         .enumerate()
         .chunks(current_num_threads())
         .for_each(|chunks| {
-            let dft = Radix2DFTSmallBatch::default();
+            let dft = Radix2DFTSmallBatch::new(sis::DEGREE);
 
             for (idx, column) in chunks {
                 let column_hash = params.r_sis.hash(&column, &dft);
@@ -394,5 +394,4 @@ mod tests {
     fn test_check_arch_2() {
         println!("AVX512VBMI2 enabled");
     }
-
 }
