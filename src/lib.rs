@@ -1,5 +1,5 @@
 use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
-use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
+use crate::merkle_tree::{MerkleTree, hash_leaf, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
 use crate::sis::RSis;
 use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel};
@@ -47,7 +47,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .flatten()
         .collect();
 
-    let hash: Vec<Vec<KoalaBear>> = (0..params.nb_col * params.rs_rate)
+    let hash: Vec<Digest> = (0..params.nb_col * params.rs_rate)
         .into_par_iter()
         .chunks(current_num_threads())
         .map(|indexes| {
@@ -59,7 +59,10 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
                 for j in 0..params.nb_row {
                     buf.push(w_[j][i]);
                 }
-                res.push(params.r_sis.hash(&buf, &dft));
+                res.push(hash_leaf(
+                    &params.perm,
+                    params.r_sis.hash(&buf, &dft),
+                ));
             }
 
             res
@@ -217,7 +220,7 @@ pub fn verify(
             let dft = Radix2DFTSmallBatch::new(sis::DEGREE);
 
             for (idx, column) in chunks {
-                let column_hash = params.r_sis.hash(&column, &dft);
+                let column_hash = hash_leaf(&params.perm, params.r_sis.hash(&column, &dft));
                 assert!(
                     verify_merkle_proof(
                         proof.column_ids[idx],

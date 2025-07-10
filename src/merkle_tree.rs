@@ -30,20 +30,7 @@ pub fn hash_leaf(perm: &PoseidonHash, leaf: Vec<KoalaBear>) -> Digest {
 }
 
 impl MerkleTree {
-    pub fn build(perm: &PoseidonHash, leaves: Vec<Vec<KoalaBear>>) -> Self {
-        let leaves: Vec<Digest> = leaves
-            .into_par_iter()
-            .chunks(current_num_threads())
-            .map(|chunks| {
-                let mut res = Vec::with_capacity(chunks.len());
-                for leaf in chunks {
-                    res.push(hash_leaf(perm, leaf));
-                }
-                res
-            })
-            .flatten()
-            .collect();
-
+    pub fn build(perm: &PoseidonHash, leaves: Vec<Digest>) -> Self {
         let depth = leaves.len().ilog2() as usize;
 
         let mut layers = Vec::with_capacity(depth + 1);
@@ -103,12 +90,12 @@ impl MerkleTree {
 
 pub fn verify_merkle_proof(
     mut index: usize,
-    leaf: Vec<KoalaBear>,
+    leaf: Digest,
     root: Digest,
     proof: Vec<Digest>,
     perm: &PoseidonHash,
 ) -> bool {
-    let mut current = hash_leaf(perm, leaf);
+    let mut current = leaf;
 
     for sibling in proof {
         let (left, right) = if index & 1 == 0 {
@@ -126,7 +113,7 @@ pub fn verify_merkle_proof(
 #[cfg(test)]
 mod tests {
     use crate::hash::{Digest, PoseidonHash};
-    use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
+    use crate::merkle_tree::{MerkleTree, hash_leaf, verify_merkle_proof};
     use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
     use rand::rngs::SmallRng;
     use rand::{Rng, SeedableRng};
@@ -145,7 +132,9 @@ mod tests {
         let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
 
         // Generate a power-of-two number of leaves (e.g., 8)
-        let leaves: Vec<Vec<KoalaBear>> = (0..256).map(|_| random_leaf(&mut rng)).collect();
+        let leaves: Vec<Digest> = (0..256)
+            .map(|_| hash_leaf(&perm, random_leaf(&mut rng)))
+            .collect();
 
         // Build Merkle Tree
         let tree = MerkleTree::build(&perm, leaves.clone());
