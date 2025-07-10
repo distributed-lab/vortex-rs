@@ -39,7 +39,7 @@ impl MerkleTree {
         for i in 0..depth {
             let prev = &layers[i];
 
-            if prev.len() / 2 >= 128 {
+            if prev.len() / 2 >= 64 {
                 let next: Vec<Digest> = (0..prev.len() / 2)
                     .into_par_iter()
                     .chunks(current_num_threads())
