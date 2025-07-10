@@ -372,6 +372,11 @@ mod tests {
         println!("Verify: {:?}", elapsed);
     }
 
+    #[test]
+    fn test_cores() {
+        println!("{}", current_num_threads());
+    }
+
     #[cfg(all(
         feature = "nightly-features",
         target_arch = "x86_64",
