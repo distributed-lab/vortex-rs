@@ -1,4 +1,3 @@
-use std::time::Instant;
 use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
 use crate::merkle_tree::{MerkleTree, hash_leaf, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
@@ -9,6 +8,7 @@ use p3_field::extension::BinomialExtensionField;
 use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
 use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
+use std::time::Instant;
 
 pub mod hash;
 pub mod merkle_tree;
@@ -36,18 +36,24 @@ pub struct OpenProof {
 pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>) {
     let start = Instant::now();
 
+    // let w_: Vec<Vec<KoalaBear>> = w
+    //     .into_par_iter()
+    //     .chunks(current_num_threads())
+    //     .map(|chunk| {
+    //         let mut res = Vec::with_capacity(chunk.len());
+    //         let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
+    //         for wi in chunk {
+    //             res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
+    //         }
+    //         res
+    //     })
+    //     .flatten()
+    //     .collect();
+
+    let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
     let w_: Vec<Vec<KoalaBear>> = w
-        .into_par_iter()
-        .chunks(current_num_threads())
-        .map(|chunk| {
-            let mut res = Vec::with_capacity(chunk.len());
-            let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
-            for wi in chunk {
-                res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
-            }
-            res
-        })
-        .flatten()
+        .into_iter()
+        .map(|wi| encode_reed_solomon(wi, params.rs_rate, &dft))
         .collect();
 
     let mut elapsed = start.elapsed();
