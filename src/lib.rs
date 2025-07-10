@@ -36,24 +36,18 @@ pub struct OpenProof {
 pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>) {
     let start = Instant::now();
 
-    // let w_: Vec<Vec<KoalaBear>> = w
-    //     .into_par_iter()
-    //     .chunks(current_num_threads())
-    //     .map(|chunk| {
-    //         let mut res = Vec::with_capacity(chunk.len());
-    //         let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
-    //         for wi in chunk {
-    //             res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
-    //         }
-    //         res
-    //     })
-    //     .flatten()
-    //     .collect();
-
-    let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
     let w_: Vec<Vec<KoalaBear>> = w
-        .into_iter()
-        .map(|wi| encode_reed_solomon(wi, params.rs_rate, &dft))
+        .into_par_iter()
+        .chunks(current_num_threads())
+        .map(|chunk| {
+            let mut res = Vec::with_capacity(chunk.len());
+            let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
+            for wi in chunk {
+                res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
+            }
+            res
+        })
+        .flatten()
         .collect();
 
     let mut elapsed = start.elapsed();
