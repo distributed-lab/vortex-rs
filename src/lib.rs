@@ -10,11 +10,11 @@ use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
 use std::time::Instant;
 
+mod bindings;
 pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
 pub mod sis;
-mod bindings;
 
 pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
@@ -40,14 +40,16 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
     let w_: Vec<Vec<KoalaBear>> = w
         .into_par_iter()
         .chunks(current_num_threads())
-        .map(|chunk| {
-            let mut res = Vec::with_capacity(chunk.len());
-            let dft = Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate);
-            for wi in chunk {
-                res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
-            }
-            res
-        })
+        .map_init(
+            || Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate),
+            |dft, chunk| {
+                let mut res = Vec::with_capacity(chunk.len());
+                for wi in chunk {
+                    res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
+                }
+                res
+            },
+        )
         .flatten()
         .collect();
 
@@ -402,8 +404,6 @@ mod tests {
     fn test_cores() {
         println!("{}", current_num_threads());
     }
-
-
 
     #[cfg(all(
         feature = "nightly-features",
