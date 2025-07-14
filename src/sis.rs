@@ -158,7 +158,7 @@ impl RSis {
                     let mut k256 = [KoalaBear::ZERO; 256];
 
                     for i in 0..v_.len() {
-                        k256[i] = v[i];
+                        k256[i] = v_[i];
                     }
 
                     v_ = k256.to_vec();
