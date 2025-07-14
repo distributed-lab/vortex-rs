@@ -171,19 +171,19 @@ impl RSis {
                 };
 
                 let coset_slice = GoSlice {
-                    data: self.coset.as_ptr() as *mut _,
+                    data: self.coset.clone().as_mut_ptr().cast(),
                     len: self.coset.len() as _,
                     cap: self.coset.capacity() as _,
                 };
 
                 let twiddles_slice = GoSlice {
-                    data: self.twiddles.as_ptr() as *mut _,
+                    data: self.twiddles.clone().as_mut_ptr().cast(),
                     len: self.twiddles.len() as _,
                     cap: self.twiddles.capacity() as _,
                 };
 
                 let ag_shuffled_slice = GoSlice {
-                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
+                    data: self.ag_shuffled[pol_id].clone().as_mut_ptr().cast(),
                     len: self.ag_shuffled[pol_id].len() as _,
                     cap: self.ag_shuffled[pol_id].capacity() as _,
                 };
