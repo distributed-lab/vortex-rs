@@ -225,10 +225,6 @@ impl RSis {
             SisUnshuffle_avx512(res_slice);
         }
 
-        for i in 0..self.ag.len() {
-            res = self.inner_hash(res, &mut v.iter(), i, &dft);
-        }
-
         dft.idft(res)
     }
 
