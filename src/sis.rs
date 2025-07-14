@@ -312,13 +312,23 @@ fn derive_random_element_from_seed(seed: u64, i: u64, j: u64) -> KoalaBear {
 fn roots_of_unity_table(n: usize) -> Vec<Vec<KoalaBear>> {
     let lg_n = n.ilog2() as usize;
     let generator = KoalaBear::two_adic_generator(lg_n);
-    let half_n = 1 << (lg_n - 1);
-    // nth_roots = [1, g, g^2, g^3, ..., g^{n/2 - 1}]
-    let nth_roots: Vec<_> = generator.powers().take(half_n).collect();
 
-    (0..lg_n)
-        .map(|i| nth_roots.iter().step_by(1 << i).copied().collect())
-        .collect()
+    let mut t = vec![vec![]; lg_n];
+    t[0] = vec![KoalaBear::ONE; 1 + (1 << (lg_n - 1))];
+    for i in 1..t[0].len() {
+        t[0][i] = t[0][i - 1] * generator;
+    }
+
+    for i in 1..lg_n {
+        t[i] = vec![KoalaBear::ZERO; 1 + (1 << (lg_n - i - 1))];
+        let mut k = 0;
+        for j in 0..t[i].len() {
+            t[i][j] = t[0][k];
+            k += 1 << i;
+        }
+    }
+
+    t
 }
 
 fn compute_twiddles(fft_len: usize) -> Vec<Vec<KoalaBear>> {
@@ -326,7 +336,8 @@ fn compute_twiddles(fft_len: usize) -> Vec<Vec<KoalaBear>> {
     let mut new_twiddles = roots_of_unity_table(fft_len);
 
     new_twiddles.iter_mut().for_each(|ts| {
-        reverse_slice_index_bits(ts);
+        let ln = ts.len();
+        reverse_slice_index_bits(ts[0..ln - 1].as_mut());
     });
 
     new_twiddles
