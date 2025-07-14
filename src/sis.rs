@@ -149,9 +149,7 @@ impl RSis {
         if ENABLE_AVX {
             let mut pol_id = 0;
 
-            let mut twiddles = convert_2d_arr_to_go(&mut self.twiddles.clone());
-            let mut coset = self.coset.clone();
-            let mut ag_shuffled = self.ag_shuffled.clone();
+            let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
 
             for j in (0..v.len()).step_by(256) {
                 let start = j;
@@ -175,9 +173,9 @@ impl RSis {
                 };
 
                 let coset_slice = GoSlice {
-                    data: coset.as_mut_ptr().cast(),
-                    len: coset.len() as _,
-                    cap: coset.capacity() as _,
+                    data: self.coset.as_ptr() as *mut _,
+                    len: self.coset.len() as _,
+                    cap: self.coset.capacity() as _,
                 };
 
                 let twiddles_slice = GoSlice {
@@ -187,9 +185,9 @@ impl RSis {
                 };
 
                 let ag_shuffled_slice = GoSlice {
-                    data: ag_shuffled[pol_id].as_mut_ptr().cast(),
-                    len: ag_shuffled[pol_id].len() as _,
-                    cap: ag_shuffled[pol_id].capacity() as _,
+                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
+                    len: self.ag_shuffled[pol_id].len() as _,
+                    cap: self.ag_shuffled[pol_id].capacity() as _,
                 };
 
                 let res_slice = GoSlice {
@@ -295,10 +293,10 @@ impl RSis {
     }
 }
 
-fn convert_2d_arr_to_go(v: &mut Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
-    v.iter_mut()
+fn convert_2d_arr_to_go(v: &Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
+    v.iter()
         .map(|v| GoSlice {
-            data: v.as_mut_ptr().cast(),
+            data: v.as_ptr() as *mut _,
             len: v.len() as _,
             cap: v.capacity() as _,
         })
