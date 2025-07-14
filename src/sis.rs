@@ -31,6 +31,8 @@ pub const ENABLE_AVX: bool = true;
 
 pub const MUL_GENERATOR: u32 = 3;
 
+pub const HASH_STEP: usize = 256;
+
 mod ffi {
     // pulls in GoSlice, Element, and the three extern functions
     include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bindings.rs"));
@@ -158,20 +160,10 @@ impl RSis {
 
         let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
 
-        for j in (0..v.len()).step_by(256) {
+        for j in (0..v.len()).step_by(HASH_STEP) {
             let start = j;
-            let end = min(j + 256, v.len());
+            let end = min(j + HASH_STEP, v.len());
             let mut v_ = v[start..end].to_vec();
-
-            if v_.len() != 256 {
-                let mut k256 = [KoalaBear::ZERO; 256];
-
-                for i in 0..v_.len() {
-                    k256[i] = v_[i];
-                }
-
-                v_ = k256.to_vec();
-            }
 
             let v__slice = GoSlice {
                 data: v_.as_mut_ptr().cast(),
@@ -224,6 +216,10 @@ impl RSis {
         unsafe {
             SisUnshuffle_avx512(res_slice);
         }
+
+        // for i in 0..self.ag.len() {
+        //     res = self.inner_hash(res, &mut v.iter(), i, &dft);
+        // }
 
         dft.idft(res)
     }
