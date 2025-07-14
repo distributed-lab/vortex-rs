@@ -203,6 +203,7 @@ impl RSis {
                         res_slice,
                     );
                 }
+                pol_id += 1;
             }
 
             let res_slice = GoSlice {
