@@ -13,8 +13,8 @@ pub struct RSis {
     pub(crate) a: Vec<Vec<KoalaBear>>,
     pub(crate) ag: Vec<Vec<KoalaBear>>,
     pub(crate) max_nb_elements_to_hash: usize,
-    pub(crate) ag_shuffled: Vec<Vec<KoalaBear>>,
     pub(crate) coset: Vec<KoalaBear>,
+    pub(crate) ag_shuffled: Vec<Vec<KoalaBear>>,
     pub(crate) twiddles: Vec<Vec<KoalaBear>>,
 }
 
@@ -68,8 +68,8 @@ impl RSis {
             a: vec![vec![]; n],
             ag: vec![vec![]; n],
             max_nb_elements_to_hash,
-            ag_shuffled: vec![],
             coset: vec![],
+            ag_shuffled: vec![],
             twiddles: vec![],
         };
 
@@ -149,7 +149,7 @@ impl RSis {
         if ENABLE_AVX {
             let mut pol_id = 0;
 
-            let mut twiddles = self.twiddles.clone();
+            let mut twiddles = convert_2d_arr_to_go(&mut self.twiddles.clone());
             let mut coset = self.coset.clone();
             let mut ag_shuffled = self.ag_shuffled.clone();
 
@@ -293,6 +293,16 @@ impl RSis {
 
         state
     }
+}
+
+fn convert_2d_arr_to_go(v: &mut Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
+    v.iter_mut()
+        .map(|v| GoSlice {
+            data: v.as_mut_ptr().cast(),
+            len: v.len() as _,
+            cap: v.capacity() as _,
+        })
+        .collect()
 }
 
 fn derive_random_element_from_seed(seed: u64, i: u64, j: u64) -> KoalaBear {
