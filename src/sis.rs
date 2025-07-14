@@ -1,15 +1,21 @@
 use p3_dft::{Radix2DFTSmallBatch, TwoAdicSubgroupDft};
 use p3_field::integers::QuotientMap;
-use p3_field::{PrimeCharacteristicRing, PrimeField32};
+use p3_field::{PrimeCharacteristicRing, PrimeField32, TwoAdicField};
 use p3_koala_bear::KoalaBear;
 use p3_maybe_rayon::prelude::*;
+use p3_util::reverse_slice_index_bits;
 use rayon::current_num_threads;
+use std::cmp::min;
+use std::iter;
 use std::slice::Iter;
 
 pub struct RSis {
     a: Vec<Vec<KoalaBear>>,
     ag: Vec<Vec<KoalaBear>>,
     max_nb_elements_to_hash: usize,
+    ag_shuffled: Vec<Vec<KoalaBear>>,
+    coset: Vec<KoalaBear>,
+    twiddles: Vec<Vec<KoalaBear>>,
 }
 
 const KOALA_BEAR_BITS: usize = 31;
@@ -20,6 +26,16 @@ const LOG_TWO_BOUND: usize = 16;
 const LIMB_SIZE: usize = LOG_TWO_BOUND / 8;
 
 pub const DEGREE: usize = 1 << LOG_TWO_DEGREE;
+
+pub const ENABLE_AVX: bool = true;
+
+pub const MUL_GENERATOR: u32 = 3;
+
+mod ffi {
+    // pulls in GoSlice, Element, and the three extern functions
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bindings.rs"));
+}
+use ffi::*;
 
 impl RSis {
     pub fn new(
@@ -52,6 +68,9 @@ impl RSis {
             a: vec![vec![]; n],
             ag: vec![vec![]; n],
             max_nb_elements_to_hash,
+            ag_shuffled: vec![],
+            coset: vec![],
+            twiddles: vec![],
         };
 
         let n = n;
@@ -89,6 +108,34 @@ impl RSis {
             .flatten()
             .collect();
 
+        if ENABLE_AVX {
+            r.ag_shuffled = (0..n)
+                .into_iter()
+                .map(|i| {
+                    let mut ag_i = r.ag[i].clone();
+                    let ag_i_slice = GoSlice {
+                        data: ag_i.as_mut_ptr().cast(),
+                        len: ag_i.len() as _,
+                        cap: ag_i.capacity() as _,
+                    };
+
+                    unsafe {
+                        SisShuffle_avx512(ag_i_slice);
+                    }
+
+                    ag_i
+                })
+                .collect();
+
+            r.coset = vec![KoalaBear::ONE; DEGREE];
+            let mul_gen = KoalaBear::from_int(MUL_GENERATOR);
+            for i in 1..DEGREE {
+                r.coset[i] = r.coset[i - 1] * mul_gen;
+            }
+
+            r.twiddles = compute_twiddles(DEGREE);
+        }
+
         r
     }
 
@@ -99,8 +146,78 @@ impl RSis {
         );
         let mut res = vec![KoalaBear::ZERO; DEGREE];
 
-        for i in 0..self.ag.len() {
-            res = self.inner_hash(res, &mut v.iter(), i, &dft);
+        if ENABLE_AVX {
+            let mut pol_id = 0;
+
+            for j in (0..v.len()).step_by(256) {
+                let start = j;
+                let end = min(j + 256, v.len());
+                let mut v_ = v[start..end].to_vec();
+
+                if v_.len() != 256 {
+                    let mut k256 = [KoalaBear::ZERO; 256];
+
+                    for i in 0..v_.len() {
+                        k256[i] = v[i];
+                    }
+
+                    v_ = k256.to_vec();
+                }
+
+                let v__slice = GoSlice {
+                    data: v_.as_mut_ptr().cast(),
+                    len: v_.len() as _,
+                    cap: v_.capacity() as _,
+                };
+
+                let coset_slice = GoSlice {
+                    data: self.coset.as_ptr() as *mut _,
+                    len: self.coset.len() as _,
+                    cap: self.coset.capacity() as _,
+                };
+
+                let twiddles_slice = GoSlice {
+                    data: self.twiddles.as_ptr() as *mut _,
+                    len: self.twiddles.len() as _,
+                    cap: self.twiddles.capacity() as _,
+                };
+
+                let ag_shuffled_slice = GoSlice {
+                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
+                    len: self.ag_shuffled[pol_id].len() as _,
+                    cap: self.ag_shuffled[pol_id].capacity() as _,
+                };
+
+                let res_slice = GoSlice {
+                    data: res.as_mut_ptr().cast(),
+                    len: res.len() as _,
+                    cap: res.capacity() as _,
+                };
+
+                unsafe {
+                    Sis512_16_avx512(
+                        v__slice,
+                        coset_slice,
+                        twiddles_slice,
+                        ag_shuffled_slice,
+                        res_slice,
+                    );
+                }
+            }
+
+            let res_slice = GoSlice {
+                data: res.as_mut_ptr().cast(),
+                len: res.len() as _,
+                cap: res.capacity() as _,
+            };
+
+            unsafe {
+                SisUnshuffle_avx512(res_slice);
+            }
+        } else {
+            for i in 0..self.ag.len() {
+                res = self.inner_hash(res, &mut v.iter(), i, &dft);
+            }
         }
 
         dft.idft(res)
@@ -185,4 +302,27 @@ fn derive_random_element_from_seed(seed: u64, i: u64, j: u64) -> KoalaBear {
     let mut first16 = [0u8; 16];
     first16.copy_from_slice(&res.as_bytes()[..16]);
     KoalaBear::from_int(u128::from_be_bytes(first16))
+}
+
+fn roots_of_unity_table(n: usize) -> Vec<Vec<KoalaBear>> {
+    let lg_n = n.ilog2() as usize;
+    let generator = KoalaBear::two_adic_generator(lg_n);
+    let half_n = 1 << (lg_n - 1);
+    // nth_roots = [1, g, g^2, g^3, ..., g^{n/2 - 1}]
+    let nth_roots: Vec<_> = generator.powers().take(half_n).collect();
+
+    (0..lg_n)
+        .map(|i| nth_roots.iter().step_by(1 << i).copied().collect())
+        .collect()
+}
+
+fn compute_twiddles(fft_len: usize) -> Vec<Vec<KoalaBear>> {
+    // roots_of_unity_table(fft_len) returns a vector of twiddles of length log_2(fft_len).
+    let mut new_twiddles = roots_of_unity_table(fft_len);
+
+    new_twiddles.iter_mut().for_each(|ts| {
+        reverse_slice_index_bits(ts);
+    });
+
+    new_twiddles
 }

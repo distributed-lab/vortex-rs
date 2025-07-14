@@ -2,6 +2,7 @@
 name = "vortex"
 version = "0.1.0"
 edition = "2024"
+links = "sis_amd64"
 
 [dependencies]
 p3-dft = { version = "0.3.0",features = ["parallel"] }
@@ -13,6 +14,7 @@ p3-poseidon2 = "0.3.0"
 rand = "0.9.1"
 rayon = "1.10.0"
 blake3 = "1.8.2"
+p3-util = "0.3.0"
 
 [features]
 nightly-features = [

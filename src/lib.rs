@@ -14,6 +14,7 @@ pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
 pub mod sis;
+mod bindings;
 
 pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
