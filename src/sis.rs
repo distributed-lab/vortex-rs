@@ -110,21 +110,29 @@ impl RSis {
 
         if ENABLE_AVX {
             r.ag_shuffled = (0..n)
-                .into_iter()
-                .map(|i| {
-                    let mut ag_i = r.ag[i].clone();
-                    let ag_i_slice = GoSlice {
-                        data: ag_i.as_mut_ptr().cast(),
-                        len: ag_i.len() as _,
-                        cap: ag_i.capacity() as _,
-                    };
+                .into_par_iter()
+                .chunks(current_num_threads())
+                .map(|indexes| {
+                    let mut res = Vec::with_capacity(indexes.len());
 
-                    unsafe {
-                        SisShuffle_avx512(ag_i_slice);
+                    for i in indexes {
+                        let mut ag_i = r.ag[i].clone();
+                        let ag_i_slice = GoSlice {
+                            data: ag_i.as_mut_ptr().cast(),
+                            len: ag_i.len() as _,
+                            cap: ag_i.capacity() as _,
+                        };
+
+                        unsafe {
+                            SisShuffle_avx512(ag_i_slice);
+                        }
+
+                        res.push(ag_i);
                     }
 
-                    ag_i
+                    res
                 })
+                .flatten()
                 .collect();
 
             r.coset = vec![KoalaBear::ONE; DEGREE];
