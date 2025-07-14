@@ -154,67 +154,48 @@ impl RSis {
         );
         let mut res = vec![KoalaBear::ZERO; DEGREE];
 
-        if ENABLE_AVX {
-            let mut pol_id = 0;
+        let mut pol_id = 0;
 
-            let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
+        let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
 
-            for j in (0..v.len()).step_by(256) {
-                let start = j;
-                let end = min(j + 256, v.len());
-                let mut v_ = v[start..end].to_vec();
+        for j in (0..v.len()).step_by(256) {
+            let start = j;
+            let end = min(j + 256, v.len());
+            let mut v_ = v[start..end].to_vec();
 
-                if v_.len() != 256 {
-                    let mut k256 = [KoalaBear::ZERO; 256];
+            if v_.len() != 256 {
+                let mut k256 = [KoalaBear::ZERO; 256];
 
-                    for i in 0..v_.len() {
-                        k256[i] = v_[i];
-                    }
-
-                    v_ = k256.to_vec();
+                for i in 0..v_.len() {
+                    k256[i] = v_[i];
                 }
 
-                let v__slice = GoSlice {
-                    data: v_.as_mut_ptr().cast(),
-                    len: v_.len() as _,
-                    cap: v_.capacity() as _,
-                };
-
-                let coset_slice = GoSlice {
-                    data: self.coset.as_ptr() as *mut _,
-                    len: self.coset.len() as _,
-                    cap: self.coset.capacity() as _,
-                };
-
-                let twiddles_slice = GoSlice {
-                    data: twiddles.as_mut_ptr().cast(),
-                    len: twiddles.len() as _,
-                    cap: twiddles.capacity() as _,
-                };
-
-                let ag_shuffled_slice = GoSlice {
-                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
-                    len: self.ag_shuffled[pol_id].len() as _,
-                    cap: self.ag_shuffled[pol_id].capacity() as _,
-                };
-
-                let res_slice = GoSlice {
-                    data: res.as_mut_ptr().cast(),
-                    len: res.len() as _,
-                    cap: res.capacity() as _,
-                };
-
-                unsafe {
-                    Sis512_16_avx512(
-                        v__slice,
-                        coset_slice,
-                        twiddles_slice,
-                        ag_shuffled_slice,
-                        res_slice,
-                    );
-                }
-                pol_id += 1;
+                v_ = k256.to_vec();
             }
+
+            let v__slice = GoSlice {
+                data: v_.as_mut_ptr().cast(),
+                len: v_.len() as _,
+                cap: v_.capacity() as _,
+            };
+
+            let coset_slice = GoSlice {
+                data: self.coset.as_ptr() as *mut _,
+                len: self.coset.len() as _,
+                cap: self.coset.capacity() as _,
+            };
+
+            let twiddles_slice = GoSlice {
+                data: twiddles.as_mut_ptr().cast(),
+                len: twiddles.len() as _,
+                cap: twiddles.capacity() as _,
+            };
+
+            let ag_shuffled_slice = GoSlice {
+                data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
+                len: self.ag_shuffled[pol_id].len() as _,
+                cap: self.ag_shuffled[pol_id].capacity() as _,
+            };
 
             let res_slice = GoSlice {
                 data: res.as_mut_ptr().cast(),
@@ -223,12 +204,29 @@ impl RSis {
             };
 
             unsafe {
-                SisUnshuffle_avx512(res_slice);
+                Sis512_16_avx512(
+                    v__slice,
+                    coset_slice,
+                    twiddles_slice,
+                    ag_shuffled_slice,
+                    res_slice,
+                );
             }
-        } else {
-            for i in 0..self.ag.len() {
-                res = self.inner_hash(res, &mut v.iter(), i, &dft);
-            }
+            pol_id += 1;
+        }
+
+        let res_slice = GoSlice {
+            data: res.as_mut_ptr().cast(),
+            len: res.len() as _,
+            cap: res.capacity() as _,
+        };
+
+        unsafe {
+            SisUnshuffle_avx512(res_slice);
+        }
+
+        for i in 0..self.ag.len() {
+            res = self.inner_hash(res, &mut v.iter(), i, &dft);
         }
 
         dft.idft(res)
