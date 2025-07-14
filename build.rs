@@ -3,7 +3,10 @@ use std::path::PathBuf;
 
 fn main() {
     // Tell rustc where the Go‑built library lives
-    let lib_dir = PathBuf::from("native/libs");
+    let lib_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("native")
+        .join("libs");
+
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
 
     // Link against libsis_amd64.so  (if you have libsis_amd64.a, change to static)
