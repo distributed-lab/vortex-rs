@@ -149,6 +149,10 @@ impl RSis {
         if ENABLE_AVX {
             let mut pol_id = 0;
 
+            let mut twiddles = self.twiddles.clone();
+            let mut coset = self.coset.clone();
+            let mut ag_shuffled = self.ag_shuffled.clone();
+
             for j in (0..v.len()).step_by(256) {
                 let start = j;
                 let end = min(j + 256, v.len());
@@ -171,21 +175,21 @@ impl RSis {
                 };
 
                 let coset_slice = GoSlice {
-                    data: self.coset.as_ptr() as *mut _,
-                    len: self.coset.len() as _,
-                    cap: self.coset.capacity() as _,
+                    data: coset.as_mut_ptr().cast(),
+                    len: coset.len() as _,
+                    cap: coset.capacity() as _,
                 };
 
                 let twiddles_slice = GoSlice {
-                    data: self.twiddles.as_ptr() as *mut _,
-                    len: self.twiddles.len() as _,
-                    cap: self.twiddles.capacity() as _,
+                    data: twiddles.as_mut_ptr().cast(),
+                    len: twiddles.len() as _,
+                    cap: twiddles.capacity() as _,
                 };
 
                 let ag_shuffled_slice = GoSlice {
-                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
-                    len: self.ag_shuffled[pol_id].len() as _,
-                    cap: self.ag_shuffled[pol_id].capacity() as _,
+                    data: ag_shuffled[pol_id].as_mut_ptr().cast(),
+                    len: ag_shuffled[pol_id].len() as _,
+                    cap: ag_shuffled[pol_id].capacity() as _,
                 };
 
                 let res_slice = GoSlice {
