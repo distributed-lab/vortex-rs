@@ -10,12 +10,12 @@ use std::iter;
 use std::slice::Iter;
 
 pub struct RSis {
-    a: Vec<Vec<KoalaBear>>,
-    ag: Vec<Vec<KoalaBear>>,
-    max_nb_elements_to_hash: usize,
-    ag_shuffled: Vec<Vec<KoalaBear>>,
-    coset: Vec<KoalaBear>,
-    twiddles: Vec<Vec<KoalaBear>>,
+    pub(crate) a: Vec<Vec<KoalaBear>>,
+    pub(crate) ag: Vec<Vec<KoalaBear>>,
+    pub(crate) max_nb_elements_to_hash: usize,
+    pub(crate) ag_shuffled: Vec<Vec<KoalaBear>>,
+    pub(crate) coset: Vec<KoalaBear>,
+    pub(crate) twiddles: Vec<Vec<KoalaBear>>,
 }
 
 const KOALA_BEAR_BITS: usize = 31;

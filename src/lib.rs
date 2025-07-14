@@ -380,9 +380,30 @@ mod tests {
     }
 
     #[test]
+    fn test_sis_init() {
+        let mut rng = SmallRng::seed_from_u64(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
+        let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
+        let r_sis = RSis::new(0, 1 << 19);
+
+        println!("{}", r_sis.twiddles.len());
+        println!("{}", r_sis.twiddles[0].len());
+        println!("{}", r_sis.twiddles[0][0]);
+        println!("{}", r_sis.twiddles[0][1]);
+        println!("{}", r_sis.twiddles[0][2]);
+        println!("{}", r_sis.twiddles[0][3]);
+    }
+
+    #[test]
     fn test_cores() {
         println!("{}", current_num_threads());
     }
+
+
 
     #[cfg(all(
         feature = "nightly-features",
