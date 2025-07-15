@@ -5,6 +5,8 @@ use p3_koala_bear::KoalaBear;
 use p3_maybe_rayon::prelude::*;
 use p3_util::reverse_slice_index_bits;
 use rayon::current_num_threads;
+use std::cmp::min;
+use std::iter;
 use std::slice::Iter;
 
 pub struct RSis {
