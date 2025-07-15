@@ -13,9 +13,9 @@
 This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation (it has been
 rewritten
 from [Gnark's implementation](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/sis/sis.go)) for
-hashing columns. On the x86 architecture that enable AVX optimization it leverages dynamic library compiled from Go
-version mentioned above. It also leverages KoalaBear prime field and its 4-degree extension. The field, Poseidon2 and
-DFT implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
+hashing columns. On the x86 architecture which enables AVX optimization the implementation leverages dynamic RingSIS
+library compiled from Go version mentioned above. It also leverages KoalaBear prime field and its 4-degree extension.
+The field, Poseidon2 and DFT implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
 The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
