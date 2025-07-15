@@ -12,11 +12,7 @@ pub type PoseidonHash = Poseidon2<
     3,
 >;
 
-pub fn hash_poseidon2(
-    perm: &PoseidonHash,
-    left: Digest,
-    right: Digest,
-) -> Digest {
+pub fn hash_poseidon2(perm: &PoseidonHash, left: Digest, right: Digest) -> Digest {
     let mut input = [
         left[0], left[1], left[2], left[3], left[4], left[5], left[6], left[7], right[0], right[1],
         right[2], right[3], right[4], right[5], right[6], right[7],
@@ -30,10 +26,10 @@ pub fn hash_poseidon2(
 
 #[cfg(test)]
 mod tests {
+    use crate::hash::{PoseidonHash, hash_poseidon2};
     use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
     use rand::prelude::SmallRng;
     use rand::{Rng, SeedableRng};
-    use crate::hash::{hash_poseidon2, PoseidonHash};
 
     #[test]
     fn test_hash_poseidon_works() {

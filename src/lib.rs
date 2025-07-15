@@ -16,12 +16,10 @@ use std::time::Instant;
     target_feature = "avx512f"
 ))]
 pub mod bindings;
-
 pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
 pub mod sis;
-
 pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
 pub struct VortexParams {
