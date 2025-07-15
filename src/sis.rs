@@ -5,8 +5,6 @@ use p3_koala_bear::KoalaBear;
 use p3_maybe_rayon::prelude::*;
 use p3_util::reverse_slice_index_bits;
 use rayon::current_num_threads;
-use std::cmp::min;
-use std::iter;
 use std::slice::Iter;
 
 pub struct RSis {
@@ -297,22 +295,6 @@ impl RSis {
         state
     }
 }
-
-#[cfg(all(
-    feature = "nightly-features",
-    target_arch = "x86_64",
-    target_feature = "avx512f"
-))]
-fn convert_2d_arr_to_go(v: &Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
-    v.iter()
-        .map(|v| GoSlice {
-            data: v.as_ptr() as *mut _,
-            len: v.len() as _,
-            cap: v.capacity() as _,
-        })
-        .collect()
-}
-
 fn derive_random_element_from_seed(seed: u64, i: u64, j: u64) -> KoalaBear {
     let mut buf = [0u8; 3 + 3 * 8];
     buf[..3].copy_from_slice(b"SIS");
