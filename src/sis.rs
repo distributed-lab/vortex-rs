@@ -27,36 +27,27 @@ const LIMB_SIZE: usize = LOG_TWO_BOUND / 8;
 
 pub const DEGREE: usize = 1 << LOG_TWO_DEGREE;
 
-pub const ENABLE_AVX: bool = true;
-
 pub const MUL_GENERATOR: u32 = 3;
 
 pub const HASH_STEP: usize = 256;
 
+#[cfg(all(
+    feature = "nightly-features",
+    target_arch = "x86_64",
+    target_feature = "avx512"
+))]
 mod ffi {
-    // pulls in GoSlice, Element, and the three extern functions
     include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bindings.rs"));
 }
+#[cfg(all(
+    feature = "nightly-features",
+    target_arch = "x86_64",
+    target_feature = "avx512"
+))]
 use ffi::*;
 
 impl RSis {
-    pub fn new(
-        seed: u64,
-        //log_two_degree: usize,
-        //log_two_bound: usize,
-        max_nb_elements_to_hash: usize,
-    ) -> Self {
-        // assert!(
-        //     log_two_bound <= 64 && log_two_bound <= KOALA_BEAR_BITS,
-        //     "logTwoBound too large"
-        // );
-        // assert_eq!(log_two_bound % 8, 0, "logTwoBound must be a multiple of 8");
-
-        // assert_eq!(
-        //     KOALA_BEAR_BYTES % nb_bytes_per_limb,
-        //     0,
-        //     "nbBytesPerLimb must divide field size"
-        // );
+    pub fn new(seed: u64, max_nb_elements_to_hash: usize) -> Self {
         let mut n = (KOALA_BEAR_BYTES / LIMB_SIZE) * max_nb_elements_to_hash;
 
         if n % DEGREE == 0 {
@@ -111,7 +102,12 @@ impl RSis {
             .flatten()
             .collect();
 
-        if ENABLE_AVX {
+        #[cfg(all(
+            feature = "nightly-features",
+            target_arch = "x86_64",
+            target_feature = "avx512"
+        ))]
+        {
             r.ag_shuffled = (0..n)
                 .into_par_iter()
                 .chunks(current_num_threads())
@@ -157,38 +153,62 @@ impl RSis {
         );
         let mut res = vec![KoalaBear::ZERO; DEGREE];
 
-        let mut pol_id = 0;
+        #[cfg(all(
+            feature = "nightly-features",
+            target_arch = "x86_64",
+            target_feature = "avx512"
+        ))]
+        {
+            let mut pol_id = 0;
 
-        let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
+            let mut twiddles = convert_2d_arr_to_go(&self.twiddles);
 
-        for j in (0..v.len()).step_by(HASH_STEP) {
-            let start = j;
-            let end = min(j + HASH_STEP, v.len());
-            let mut v_ = v[start..end].to_vec();
+            for j in (0..v.len()).step_by(HASH_STEP) {
+                let start = j;
+                let end = min(j + HASH_STEP, v.len());
+                let mut v_ = v[start..end].to_vec();
 
-            let v__slice = GoSlice {
-                data: v_.as_mut_ptr().cast(),
-                len: v_.len() as _,
-                cap: v_.capacity() as _,
-            };
+                let v__slice = GoSlice {
+                    data: v_.as_mut_ptr().cast(),
+                    len: v_.len() as _,
+                    cap: v_.capacity() as _,
+                };
 
-            let coset_slice = GoSlice {
-                data: self.coset.as_ptr() as *mut _,
-                len: self.coset.len() as _,
-                cap: self.coset.capacity() as _,
-            };
+                let coset_slice = GoSlice {
+                    data: self.coset.as_ptr() as *mut _,
+                    len: self.coset.len() as _,
+                    cap: self.coset.capacity() as _,
+                };
 
-            let twiddles_slice = GoSlice {
-                data: twiddles.as_mut_ptr().cast(),
-                len: twiddles.len() as _,
-                cap: twiddles.capacity() as _,
-            };
+                let twiddles_slice = GoSlice {
+                    data: twiddles.as_mut_ptr().cast(),
+                    len: twiddles.len() as _,
+                    cap: twiddles.capacity() as _,
+                };
 
-            let ag_shuffled_slice = GoSlice {
-                data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
-                len: self.ag_shuffled[pol_id].len() as _,
-                cap: self.ag_shuffled[pol_id].capacity() as _,
-            };
+                let ag_shuffled_slice = GoSlice {
+                    data: self.ag_shuffled[pol_id].as_ptr() as *mut _,
+                    len: self.ag_shuffled[pol_id].len() as _,
+                    cap: self.ag_shuffled[pol_id].capacity() as _,
+                };
+
+                let res_slice = GoSlice {
+                    data: res.as_mut_ptr().cast(),
+                    len: res.len() as _,
+                    cap: res.capacity() as _,
+                };
+
+                unsafe {
+                    Sis512_16_avx512(
+                        v__slice,
+                        coset_slice,
+                        twiddles_slice,
+                        ag_shuffled_slice,
+                        res_slice,
+                    );
+                }
+                pol_id += 1;
+            }
 
             let res_slice = GoSlice {
                 data: res.as_mut_ptr().cast(),
@@ -197,30 +217,16 @@ impl RSis {
             };
 
             unsafe {
-                Sis512_16_avx512(
-                    v__slice,
-                    coset_slice,
-                    twiddles_slice,
-                    ag_shuffled_slice,
-                    res_slice,
-                );
+                SisUnshuffle_avx512(res_slice);
             }
-            pol_id += 1;
         }
 
-        let res_slice = GoSlice {
-            data: res.as_mut_ptr().cast(),
-            len: res.len() as _,
-            cap: res.capacity() as _,
-        };
-
-        unsafe {
-            SisUnshuffle_avx512(res_slice);
+        #[cfg(all(not(target_feature = "avx512")))]
+        {
+            for i in 0..self.ag.len() {
+                res = self.inner_hash(res, &mut v.iter(), i, &dft);
+            }
         }
-
-        // for i in 0..self.ag.len() {
-        //     res = self.inner_hash(res, &mut v.iter(), i, &dft);
-        // }
 
         dft.idft(res)
     }
@@ -292,6 +298,11 @@ impl RSis {
     }
 }
 
+#[cfg(all(
+    feature = "nightly-features",
+    target_arch = "x86_64",
+    target_feature = "avx512"
+))]
 fn convert_2d_arr_to_go(v: &Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
     v.iter()
         .map(|v| GoSlice {

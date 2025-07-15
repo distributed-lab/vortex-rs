@@ -10,7 +10,13 @@ use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
 use std::time::Instant;
 
-mod bindings;
+#[cfg(all(
+    feature = "nightly-features",
+    target_arch = "x86_64",
+    target_feature = "avx512"
+))]
+pub mod bindings;
+
 pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
