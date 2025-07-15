@@ -13,7 +13,7 @@ use std::time::Instant;
 #[cfg(all(
     feature = "nightly-features",
     target_arch = "x86_64",
-    target_feature = "avx512"
+    target_feature = "avx512f"
 ))]
 pub mod bindings;
 

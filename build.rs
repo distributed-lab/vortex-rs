@@ -3,7 +3,7 @@ use std::path::PathBuf;
 #[cfg(all(
     feature = "nightly-features",
     target_arch = "x86_64",
-    target_feature = "avx512"
+    target_feature = "avx512f"
 ))]
 fn main() {
     // Tell rustc where the Go‑built library lives
@@ -21,5 +21,5 @@ fn main() {
     println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../native/lib");
 }
 
-#[cfg(all(not(target_feature = "avx512")))]
+#[cfg(all(not(target_feature = "avx512f")))]
 fn main() {}

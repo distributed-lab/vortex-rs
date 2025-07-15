@@ -34,7 +34,7 @@ pub const HASH_STEP: usize = 256;
 #[cfg(all(
     feature = "nightly-features",
     target_arch = "x86_64",
-    target_feature = "avx512"
+    target_feature = "avx512f"
 ))]
 mod ffi {
     include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/bindings.rs"));
@@ -42,7 +42,7 @@ mod ffi {
 #[cfg(all(
     feature = "nightly-features",
     target_arch = "x86_64",
-    target_feature = "avx512"
+    target_feature = "avx512f"
 ))]
 use ffi::*;
 
@@ -105,7 +105,7 @@ impl RSis {
         #[cfg(all(
             feature = "nightly-features",
             target_arch = "x86_64",
-            target_feature = "avx512"
+            target_feature = "avx512f"
         ))]
         {
             r.ag_shuffled = (0..n)
@@ -156,7 +156,7 @@ impl RSis {
         #[cfg(all(
             feature = "nightly-features",
             target_arch = "x86_64",
-            target_feature = "avx512"
+            target_feature = "avx512f"
         ))]
         {
             let mut pol_id = 0;
@@ -221,7 +221,7 @@ impl RSis {
             }
         }
 
-        #[cfg(all(not(target_feature = "avx512")))]
+        #[cfg(all(not(target_feature = "avx512f")))]
         {
             for i in 0..self.ag.len() {
                 res = self.inner_hash(res, &mut v.iter(), i, &dft);
@@ -301,7 +301,7 @@ impl RSis {
 #[cfg(all(
     feature = "nightly-features",
     target_arch = "x86_64",
-    target_feature = "avx512"
+    target_feature = "avx512f"
 ))]
 fn convert_2d_arr_to_go(v: &Vec<Vec<KoalaBear>>) -> Vec<GoSlice> {
     v.iter()
