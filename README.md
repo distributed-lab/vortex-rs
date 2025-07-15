@@ -98,7 +98,7 @@ to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 |------------|--------|--------|
 | Commit     | ~3.9s  | ~4.5s  |
 | Open Proof | 1.5 s  | ~360ms |
-| Verify     | ~250ms | ~130ms |
+| Verify     | ~400ms | ~130ms |
 
 ## Definition
 
