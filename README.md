@@ -10,10 +10,12 @@
 
 ## Abstract
 
-This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation (it has been rewritten
+This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation (it has been
+rewritten
 from [Gnark's implementation](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/sis/sis.go)) for
-hashing columns. It also leverages KoalaBear prime field and its 4-degree extension. The field, Poseidon2 and DFT
-implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
+hashing columns. On the x86 architecture that enable AVX optimization it leverages dynamic library compiled from Go
+version mentioned above. It also leverages KoalaBear prime field and its 4-degree extension. The field, Poseidon2 and
+DFT implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
 The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
@@ -56,13 +58,15 @@ The verification function asserts if proof is invalid. The implementation is fix
 
 ## Benchmarks
 
+### ARM
+
 Run command:
 
 ```shell
 cargo test test_vortex_full --features nightly-features --release -- --show-output
 ```
 
-The following benches are taken on the M3 Pro 36GB MakBook comparing to the Golang implementation 
+The following benches are taken on the M3 Pro 36GB MacBook comparing to the Golang implementation
 from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
 
 All tests are performed for $2^{19}$ polynomials of $2^{11}$ degree according
@@ -73,6 +77,28 @@ to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 | Commit     | ~31s   | ~9s    |
 | Open Proof | 1.5-2s | ~1.1s  |
 | Verify     | ~250ms | ~850ms |
+
+### x86
+
+Run command:
+
+```shell
+export LD_LIBRARY_PATH=$(pwd)/native/libs
+RUSTFLAGS="-Ctarget-cpu=native" cargo +nightly test --features nightly-features --release test_vortex_full -- --show-output
+```
+
+The following benches are taken on the Intel(R) Xeon(R) Gold 6455B 32 CPU (1 thread per core) comparing to the Golang
+implementation
+from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
+
+All tests are performed for $2^{19}$ polynomials of $2^{11}$ degree according
+to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
+
+|            | Gnark  | Rust   |
+|------------|--------|--------|
+| Commit     | ~3.9s  | ~4.5s  |
+| Open Proof | 1.5 s  | ~360ms |
+| Verify     | ~250ms | ~130ms |
 
 ## Definition
 
