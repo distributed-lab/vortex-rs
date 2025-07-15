@@ -97,16 +97,17 @@ impl RSis {
         r.ag = (0..n)
             .into_par_iter()
             .chunks(current_num_threads())
-            .map(|indexes| {
-                let mut res = Vec::with_capacity(indexes.len());
-                let dft = Radix2DFTSmallBatch::new(DEGREE);
-
-                for i in indexes {
-                    let ag = dft.dft(r.a[i].clone());
-                    res.push(ag);
-                }
-                res
-            })
+            .map_init(
+                || Radix2DFTSmallBatch::new(DEGREE),
+                |dft, indexes| {
+                    let mut res = Vec::with_capacity(indexes.len());
+                    for i in indexes {
+                        let ag = dft.dft(r.a[i].clone());
+                        res.push(ag);
+                    }
+                    res
+                },
+            )
             .flatten()
             .collect();
 

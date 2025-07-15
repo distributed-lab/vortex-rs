@@ -59,20 +59,22 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
     let hash: Vec<Digest> = (0..params.nb_col * params.rs_rate)
         .into_par_iter()
         .chunks(current_num_threads())
-        .map(|indexes| {
-            let mut res = Vec::with_capacity(indexes.len());
-            let dft = Radix2DFTSmallBatch::new(sis::DEGREE);
+        .map_init(
+            || Radix2DFTSmallBatch::new(sis::DEGREE),
+            |dft, indexes| {
+                let mut res = Vec::with_capacity(indexes.len());
 
-            for i in indexes {
-                let mut buf = Vec::with_capacity(params.nb_row);
-                for j in 0..params.nb_row {
-                    buf.push(w_[j][i]);
+                for i in indexes {
+                    let mut buf = Vec::with_capacity(params.nb_row);
+                    for j in 0..params.nb_row {
+                        buf.push(w_[j][i]);
+                    }
+                    res.push(hash_leaf(&params.perm, params.r_sis.hash(&buf, &dft)));
                 }
-                res.push(hash_leaf(&params.perm, params.r_sis.hash(&buf, &dft)));
-            }
 
-            res
-        })
+                res
+            },
+        )
         .flatten()
         .collect();
 
@@ -225,33 +227,34 @@ pub fn verify(
         .into_par_iter()
         .enumerate()
         .chunks(current_num_threads())
-        .for_each(|chunks| {
-            let dft = Radix2DFTSmallBatch::new(sis::DEGREE);
+        .for_each_init(
+            || Radix2DFTSmallBatch::new(sis::DEGREE),
+            |dft, chunks| {
+                for (idx, column) in chunks {
+                    let column_hash = hash_leaf(&params.perm, params.r_sis.hash(&column, &dft));
+                    assert!(
+                        verify_merkle_proof(
+                            proof.column_ids[idx],
+                            column_hash,
+                            root,
+                            proof.merkle_proofs[idx].clone(),
+                            &params.perm,
+                        ),
+                        "Failed to verify merkle proof"
+                    );
 
-            for (idx, column) in chunks {
-                let column_hash = hash_leaf(&params.perm, params.r_sis.hash(&column, &dft));
-                assert!(
-                    verify_merkle_proof(
-                        proof.column_ids[idx],
-                        column_hash,
-                        root,
-                        proof.merkle_proofs[idx].clone(),
-                        &params.perm,
-                    ),
-                    "Failed to verify merkle proof"
-                );
+                    let mut beta_column = KoalaBearExt::ZERO;
+                    for i in 0..params.nb_row {
+                        beta_column += KoalaBearExt::from(column[i]) * betas[i];
+                    }
 
-                let mut beta_column = KoalaBearExt::ZERO;
-                for i in 0..params.nb_row {
-                    beta_column += KoalaBearExt::from(column[i]) * betas[i];
+                    assert_eq!(
+                        beta_column, u_[proof.column_ids[idx]],
+                        "failed to verify RS linearity"
+                    )
                 }
-
-                assert_eq!(
-                    beta_column, u_[proof.column_ids[idx]],
-                    "failed to verify RS linearity"
-                )
-            }
-        });
+            },
+        );
 }
 
 #[cfg(test)]
