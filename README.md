@@ -19,6 +19,9 @@ The field, Poseidon2 and DFT implementations are taken from [Plonky3](https://gi
 
 The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
+Note, the brunch [poseidon2-edition](https://github.com/distributed-lab/vortex-rs/tree/poseidon2-edition) contains
+implementation that leverages on only Poseidon2 hash for both column hashing and Merkle tree.
+
 ## Usage
 
 The following parameters have to be set up:
