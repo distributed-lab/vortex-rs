@@ -10,33 +10,28 @@
 
 ## Abstract
 
-This implementation leverages Poseidon2 hash function for both hashing columns and Merkle tree. It also leverages
-KoalaBear prime field. The field, hash and DFT implementations are taken
-from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
+This implementation leverages Poseidon2 hash function for Merkle tree and RingSIS hash implementation (it has been
+rewritten
+from [Gnark's implementation](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/sis/sis.go)) for
+hashing columns. On the x86 architecture which enables AVX optimization the implementation leverages dynamic RingSIS
+library compiled from Go version mentioned above. It also leverages KoalaBear prime field and its 4-degree extension.
+The field, Poseidon2 and DFT implementations are taken from [Plonky3](https://github.com/Plonky3/Plonky3) repository.
 
 The original paper can be found [here](https://eprint.iacr.org/2024/185).
 
 ## Usage
 
 The following parameters have to be set up:
+
 ```rust
 pub struct VortexParams {
-    perm: PoseidonHash,
-    nb_row: usize,
-    nb_col: usize,
-    rs_rate: usize,
+    perm: PoseidonHash, // An instance of PoseidonHash
+    r_sis: RSis, // Number of rows in commitment matrix
+    nb_row: usize, // Number of columns or a polynomial degree
+    nb_col: usize, // Reed-Solomon code rate
+    rs_rate: usize, // Number of columns to open in the opening phase
     num_columns_to_open: usize,
 }
-```
-For example:
-```rust
-let params = VortexParams {
-    perm, // An instance of PoseidonHash
-    nb_row: 1 << 19, // Number of rows in commitment matrix
-    nb_col: 1 << 11, // Number of columns or a polynomial degree
-    rs_rate: 2, // Reed-Solomon code rate
-    num_columns_to_open: 256, // Number of columns to open in the opening phase
-};
 ```
 
 Use the following functions to commit/evaluate/open and verify:
@@ -47,7 +42,7 @@ Use the following functions to commit/evaluate/open and verify:
     ```
 2. Eval
    ```rust
-      pub fn eval(params: &VortexParams, w: &Vec<Vec<KoalaBear>>, coin: KoalaBearExt, ) -> Vec<KoalaBearExt>
+      pub fn eval(params: &VortexParams, w: &Vec<Vec<KoalaBear>>, coin: KoalaBearExt) -> Vec<KoalaBearExt>
     ```
 3. Open
    ```rust
@@ -63,24 +58,47 @@ The verification function asserts if proof is invalid. The implementation is fix
 
 ## Benchmarks
 
+### ARM
+
 Run command:
 
 ```shell
 cargo test test_vortex_full --features nightly-features --release -- --show-output
 ```
 
-The following benches are taken on the M3 Pro 36GB MakBook comparing to the Golang implementation (if changed
-to Poseidon2)
+The following benches are taken on the M3 Pro 36GB MacBook comparing to the Golang implementation
 from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
 
 All tests are performed for $2^{19}$ polynomials of $2^{11}$ degree according
 to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
 
-|            | Gnark (sec) | Rust (sec) |
-|------------|-------------|------------|
-| Commit     | 70-75       | 31-35      |
-| Open Proof | 2           | 1.1-1.5    |
-| Verify     | 28          | 1.6-1.7    |
+|            | Gnark  | Rust   |
+|------------|--------|--------|
+| Commit     | ~31s   | ~9s    |
+| Open Proof | 1.5-2s | ~1.1s  |
+| Verify     | ~250ms | ~850ms |
+
+### x86
+
+Run command:
+
+```shell
+export LD_LIBRARY_PATH=$(pwd)/native/libs
+RUSTFLAGS="-Ctarget-cpu=native" cargo +nightly test --features nightly-features --release test_vortex_full -- --show-output
+```
+
+The following benches are taken on the Intel(R) Xeon(R) Gold 6455B 32 CPU (1 thread per core) comparing to the Golang
+implementation
+from [gnark-crypto](https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/vortex/prover_test.go#L232)
+
+All tests are performed for $2^{19}$ polynomials of $2^{11}$ degree according
+to [official benchmarks](https://hackmd.io/@YaoGalteland/SJ1WmzgTJg).
+
+|            | Gnark  | Rust   |
+|------------|--------|--------|
+| Commit     | ~3.9s  | ~4.5s  |
+| Open Proof | 1.5 s  | ~360ms |
+| Verify     | ~400ms | ~130ms |
 
 ## Definition
 

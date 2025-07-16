@@ -1,21 +1,30 @@
 use crate::hash::{Digest, PoseidonHash, hash_poseidon2};
-use crate::merkle_tree::{MerkleTree, verify_merkle_proof};
+use crate::merkle_tree::{MerkleTree, hash_leaf, verify_merkle_proof};
 use crate::rs::{encode_reed_solomon, encode_reed_solomon_ext};
-use p3_dft::Radix2DFTSmallBatch;
+use crate::sis::RSis;
+use p3_dft::{Radix2DFTSmallBatch, Radix2DitParallel};
 use p3_field::PrimeCharacteristicRing;
 use p3_field::extension::BinomialExtensionField;
 use p3_koala_bear::{KoalaBear, Poseidon2KoalaBear};
 use p3_maybe_rayon::prelude::*;
 use rayon::current_num_threads;
+use std::time::Instant;
 
+#[cfg(all(
+    feature = "nightly-features",
+    target_arch = "x86_64",
+    target_feature = "avx512f"
+))]
+pub mod bindings;
 pub mod hash;
 pub mod merkle_tree;
 pub mod rs;
-
+pub mod sis;
 pub type KoalaBearExt = BinomialExtensionField<KoalaBear, 4>;
 
 pub struct VortexParams {
     perm: PoseidonHash,
+    r_sis: RSis,
     nb_row: usize,
     nb_col: usize,
     rs_rate: usize,
@@ -30,45 +39,51 @@ pub struct OpenProof {
     pub beta: KoalaBearExt,
 }
 pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec<Vec<KoalaBear>>) {
+    let start = Instant::now();
+
     let w_: Vec<Vec<KoalaBear>> = w
         .into_par_iter()
         .chunks(current_num_threads())
-        .map(|chunk| {
-            let mut res = Vec::with_capacity(chunk.len());
-            let dft = Radix2DFTSmallBatch::default();
-            for wi in chunk {
-                res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
-            }
-            res
-        })
+        .map_init(
+            || Radix2DFTSmallBatch::new(params.nb_col * params.rs_rate),
+            |dft, chunk| {
+                let mut res = Vec::with_capacity(chunk.len());
+                for wi in chunk {
+                    res.push(encode_reed_solomon(wi, params.rs_rate, &dft))
+                }
+                res
+            },
+        )
         .flatten()
         .collect();
+
+    let mut elapsed = start.elapsed();
+    println!("Commit: w_: {:?}", elapsed);
 
     let hash: Vec<Digest> = (0..params.nb_col * params.rs_rate)
         .into_par_iter()
         .chunks(current_num_threads())
-        .map(|indexes| {
-            let mut res = vec![Digest::default(); indexes.len()];
+        .map_init(
+            || Radix2DFTSmallBatch::new(sis::DEGREE),
+            |dft, indexes| {
+                let mut res = Vec::with_capacity(indexes.len());
 
-            for (idx, i) in indexes.into_iter().enumerate() {
-                let mut buf = Digest::default();
-                for j in (0..params.nb_row).step_by(8) {
-                    buf[0] = w_[j][i];
-                    buf[1] = w_[j + 1][i];
-                    buf[2] = w_[j + 2][i];
-                    buf[3] = w_[j + 3][i];
-                    buf[4] = w_[j + 4][i];
-                    buf[5] = w_[j + 5][i];
-                    buf[6] = w_[j + 6][i];
-                    buf[7] = w_[j + 7][i];
-                    res[idx] = hash_poseidon2(&params.perm, res[idx], buf);
+                for i in indexes {
+                    let mut buf = Vec::with_capacity(params.nb_row);
+                    for j in 0..params.nb_row {
+                        buf.push(w_[j][i]);
+                    }
+                    res.push(hash_leaf(&params.perm, params.r_sis.hash(&buf, &dft)));
                 }
-            }
 
-            res
-        })
+                res
+            },
+        )
         .flatten()
         .collect();
+
+    elapsed = start.elapsed();
+    println!("Commit: hash: {:?}", elapsed);
 
     (MerkleTree::build(&params.perm, hash), w_)
 }
@@ -196,16 +211,19 @@ pub fn verify(
 
     let ux: KoalaBearExt = (0..params.nb_col)
         .into_par_iter()
-        .map(|i| proof.lin_comb[i] * x[i])
+        .chunks(current_num_threads())
+        .map(|chunk| chunk.into_iter().map(|i| proof.lin_comb[i] * x[i]).sum())
         .sum();
 
     let beta_y: KoalaBearExt = (0..params.nb_row)
         .into_par_iter()
-        .map(|i| y[i] * betas[i])
+        .chunks(current_num_threads())
+        .map(|chunk| chunk.into_iter().map(|i| y[i] * betas[i]).sum())
         .sum();
+
     assert_eq!(beta_y, ux, "failed to verify evaluation");
 
-    let dft = Radix2DFTSmallBatch::default();
+    let dft = Radix2DitParallel::default();
     let u_ = encode_reed_solomon_ext(proof.lin_comb, params.rs_rate, &dft);
 
     proof
@@ -213,45 +231,34 @@ pub fn verify(
         .into_par_iter()
         .enumerate()
         .chunks(current_num_threads())
-        .for_each(|chunks| {
-            for (idx, column) in chunks {
-                let mut column_hash = Digest::default();
-                let mut buf = Digest::default();
+        .for_each_init(
+            || Radix2DFTSmallBatch::new(sis::DEGREE),
+            |dft, chunks| {
+                for (idx, column) in chunks {
+                    let column_hash = hash_leaf(&params.perm, params.r_sis.hash(&column, &dft));
+                    assert!(
+                        verify_merkle_proof(
+                            proof.column_ids[idx],
+                            column_hash,
+                            root,
+                            proof.merkle_proofs[idx].clone(),
+                            &params.perm,
+                        ),
+                        "Failed to verify merkle proof"
+                    );
 
-                for i in (0..column.len()).step_by(8) {
-                    buf[0] = column[i];
-                    buf[1] = column[i + 1];
-                    buf[2] = column[i + 2];
-                    buf[3] = column[i + 3];
-                    buf[4] = column[i + 4];
-                    buf[5] = column[i + 5];
-                    buf[6] = column[i + 6];
-                    buf[7] = column[i + 7];
-                    column_hash = hash_poseidon2(&params.perm, column_hash, buf);
+                    let mut beta_column = KoalaBearExt::ZERO;
+                    for i in 0..params.nb_row {
+                        beta_column += KoalaBearExt::from(column[i]) * betas[i];
+                    }
+
+                    assert_eq!(
+                        beta_column, u_[proof.column_ids[idx]],
+                        "failed to verify RS linearity"
+                    )
                 }
-
-                assert!(
-                    verify_merkle_proof(
-                        proof.column_ids[idx],
-                        column_hash,
-                        root,
-                        proof.merkle_proofs[idx].clone(),
-                        &params.perm,
-                    ),
-                    "Failed to verify merkle proof"
-                );
-
-                let mut beta_column = KoalaBearExt::ZERO;
-                for i in 0..params.nb_row {
-                    beta_column += KoalaBearExt::from(column[i]) * betas[i];
-                }
-
-                assert_eq!(
-                    beta_column, u_[proof.column_ids[idx]],
-                    "failed to verify RS linearity"
-                )
-            }
-        });
+            },
+        );
 }
 
 #[cfg(test)]
@@ -325,9 +332,11 @@ mod tests {
                 .as_secs(),
         );
         let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
+        let r_sis = RSis::new(0, 1 << 19);
 
         let params = VortexParams {
             perm,
+            r_sis,
             nb_row: 1 << 19,
             nb_col: 1 << 11,
             rs_rate: 2,
@@ -377,5 +386,55 @@ mod tests {
 
         let elapsed = start.elapsed();
         println!("Verify: {:?}", elapsed);
+    }
+
+    #[test]
+    fn test_sis_init() {
+        let mut rng = SmallRng::seed_from_u64(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
+        let perm: PoseidonHash = Poseidon2KoalaBear::new_from_rng_128(&mut rng);
+        let r_sis = RSis::new(0, 1 << 19);
+
+        println!("{}", r_sis.twiddles.len());
+        println!("{}", r_sis.twiddles[0].len());
+        println!("{}", r_sis.twiddles[0][0]);
+        println!("{}", r_sis.twiddles[0][1]);
+        println!("{}", r_sis.twiddles[0][2]);
+        println!("{}", r_sis.twiddles[0][3]);
+    }
+
+    #[test]
+    fn test_cores() {
+        println!("{}", current_num_threads());
+    }
+
+    #[cfg(all(
+        feature = "nightly-features",
+        target_arch = "x86_64",
+        target_feature = "avx512f"
+    ))]
+    #[test]
+    fn test_check_arch() {
+        println!("AVX512F enabled");
+    }
+
+    #[cfg(all(
+        target_arch = "x86_64",
+        target_feature = "avx2",
+        not(all(feature = "nightly-features", target_feature = "avx512f"))
+    ))]
+    #[test]
+    fn test_check_arch() {
+        println!("AVX2 enabled");
+    }
+
+    #[cfg(target_feature = "avx512vbmi2")]
+    #[test]
+    fn test_check_arch_2() {
+        println!("AVX512VBMI2 enabled");
     }
 }
