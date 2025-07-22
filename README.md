@@ -29,11 +29,11 @@ The following parameters have to be set up:
 ```rust
 pub struct VortexParams {
     perm: PoseidonHash, // An instance of PoseidonHash
-    r_sis: RSis, // Number of rows in commitment matrix
-    nb_row: usize, // Number of columns or a polynomial degree
-    nb_col: usize, // Reed-Solomon code rate
-    rs_rate: usize, // Number of columns to open in the opening phase
-    num_columns_to_open: usize,
+    r_sis: RSis, // An instance of RingSis hash
+    nb_row: usize, // Number of rows in commitment matrix
+    nb_col: usize, // Number of columns or a polynomial degree
+    rs_rate: usize, // Reed-Solomon code rate
+    num_columns_to_open: usize, // Number of columns to open in the opening phase
 }
 ```
 
