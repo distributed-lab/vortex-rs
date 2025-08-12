@@ -58,7 +58,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .collect();
 
     let mut elapsed = start.elapsed();
-    println!("Commit: w_: {:?}", elapsed);
+    //println!("Commit: w_: {:?}", elapsed);
 
     let hash: Vec<Digest> = (0..params.nb_col * params.rs_rate)
         .into_par_iter()
@@ -83,7 +83,7 @@ pub fn commit(params: &VortexParams, w: Vec<Vec<KoalaBear>>) -> (MerkleTree, Vec
         .collect();
 
     elapsed = start.elapsed();
-    println!("Commit: hash: {:?}", elapsed);
+    //println!("Commit: hash: {:?}", elapsed);
 
     (MerkleTree::build(&params.perm, hash), w_)
 }
